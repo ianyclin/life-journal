@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" width="1200" height="420" role="img" aria-label="人生手帳 — 待辦、習慣、反思與目標,全部存在你自己的裝置裡">
+  <defs>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="1.2" cy="1.2" r="1.2" fill="#5A462D" opacity=".05"/>
+    </pattern>
+    <style>
+      .serif { font-family: "PingFang TC", "Noto Serif TC", "Songti TC", "Microsoft JhengHei", Georgia, serif; }
+      .sans  { font-family: "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", "Helvetica Neue", Arial, sans-serif; }
+    </style>
+  </defs>
+
+  <rect width="1200" height="420" fill="#F6F1E7"/>
+  <rect width="1200" height="420" fill="url(#dots)"/>
+
+  <!-- 手帳圖示:與 App 圖示同一組幾何 -->
+  <g transform="translate(96 74) scale(2.72)">
+    <rect x="70" y="22.8" width="6.2" height="54.4" rx="2.8" fill="#FCF9F2"/>
+    <rect x="27.5" y="20.5" width="45" height="59" rx="4.8" fill="#B85C43"/>
+    <path d="M34.6 20.5h5.6V73.5L37.4 70l-2.8 3.5z" fill="#5B7A3D"/>
+    <circle cx="37.4" cy="76.4" r="1.4" fill="#C9A24B"/>
+  </g>
+
+  <!-- 紙膠帶,呼應 App 裡的問候卡 -->
+  <rect x="360" y="70" width="128" height="26" rx="4" transform="rotate(-2.5 424 83)"
+        fill="#B85C43" opacity=".22"/>
+
+  <text class="serif" x="360" y="188" font-size="76" font-weight="700" fill="#453B2F" letter-spacing="3">人生手帳</text>
+  <text class="sans"  x="364" y="236" font-size="25" fill="#6F6455">待辦、習慣、反思與目標,全部存在你自己的裝置裡。</text>
+
+  <line x1="364" y1="268" x2="1104" y2="268" stroke="#5D4830" stroke-opacity=".16" stroke-width="1.5" stroke-dasharray="6 6"/>
+
+  <g class="sans" font-size="21" fill="#6F6455">
+    <g>
+      <rect x="364" y="292" width="150" height="44" rx="22" fill="#FCF9F2" stroke="#5D4830" stroke-opacity=".14"/>
+      <text x="439" y="320" text-anchor="middle">離線也能用</text>
+    </g>
+    <g>
+      <rect x="528" y="292" width="150" height="44" rx="22" fill="#FCF9F2" stroke="#5D4830" stroke-opacity=".14"/>
+      <text x="603" y="320" text-anchor="middle">不用帳號</text>
+    </g>
+    <g>
+      <rect x="692" y="292" width="150" height="44" rx="22" fill="#FCF9F2" stroke="#5D4830" stroke-opacity=".14"/>
+      <text x="767" y="320" text-anchor="middle">沒有追蹤</text>
+    </g>
+    <g>
+      <rect x="856" y="292" width="190" height="44" rx="22" fill="#E9EDDA" stroke="#5B7A3D" stroke-opacity=".3"/>
+      <text x="951" y="320" text-anchor="middle" fill="#47632F">可裝到主畫面</text>
+    </g>
+  </g>
+
+  <rect x="0" y="414" width="1200" height="6" fill="#B85C43" opacity=".85"/>
+</svg>
