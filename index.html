@@ -612,7 +612,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 const WD = ['日','一','二','三','四','五','六'];
 /* 每日箴言。語氣要跟這本手帳一致:陪伴,不催促;提醒,不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
-const QUOTES = [
+const QUOTES_CORE = [
   /* 把今天過好 */
   '把今天過好,就是把人生過好。',
   '平凡的日子,也是人生。',
@@ -665,19 +665,8 @@ const QUOTES = [
   '有些告別,不需要立刻想通。',
   '沒被看見的事,也真實發生過。',
   '有些事,現在還沒有答案。',
-  /* 佛教概念的白話轉述與有出處的引用。
-     出處經過查證:聖嚴法師兩句見法鼓山官方(四它、108 自在語);
-     一行禪師「我已到了,已到家了」採梅村官方繁中版本,不用自己重譯的說法。
-     刻意不收「痛是難免的,苦是可以選擇的」——《箭經》講的是不要在痛上再加
-     第二支箭,不是說受苦的人可以選擇不苦;那句容易變成「你還在苦是你自己選的」。 */
-  '沒有一種感覺會永遠留著,好的壞的都是。',
-  '放下不是失去,是不再被綁著。',
-  '此刻已經足夠。',
-  {t:'洗碗的時候,就只是洗碗。', by:'一行禪師'},
-  {t:'吸氣,知道自己在吸氣。', by:'一行禪師'},
-  {t:'弦太緊、太鬆,都彈不出聲音。', by:'佛陀的琴弦之喻'},
-  {t:'面對它、接受它、處理它、放下它。', by:'聖嚴法師'},
-  {t:'需要的不多,想要的太多。', by:'聖嚴法師'},
+  '你的時間有限,值得放在你真正在意的人與事上。',
+
   /* 中斷之後 */
   '斷掉了沒關係,接回來就好。',
   '中斷不等於失敗,只是中間休息了一下。',
@@ -712,7 +701,7 @@ const QUOTES = [
   '把窗戶打開,今天的空氣是新的。'
 ];
 /* 入夜之後換一組:這種時間該說的是收尾的話,不是再加把勁的話。 */
-const QUOTES_NIGHT = [
+const QUOTES_CORE_NIGHT = [
   '今天辛苦了。',
   '把今天放下,明天再說。',
   '夜深了,剩下的明天再想。',
@@ -723,9 +712,99 @@ const QUOTES_NIGHT = [
   '不必檢討今天,看見它就好。',
   '睡前那幾分鐘,是留給自己的。',
   '明天的事,交給明天的你。',
-  '今天沒有答案,也可以先到這裡。',
+  '今天沒有答案,也可以先到這裡。'
+];
+
+/* ===== 佛教底色 =====
+   出處查證過:聖嚴法師兩句見法鼓山官方(四它、108 自在語)。
+   一行禪師與正念呼吸那兩句標的是「教導/練習來源」而不是逐字原句 ——
+   梅村官方繁中的用字與這裡不同,不宣稱是可核對的原文。
+   刻意不收「痛是難免的,苦是可以選擇的」:《箭經》講的是不要在痛上再加
+   第二支箭,不是說受苦的人可以選擇不苦;那句容易變成「你還在苦是你自己選的」。 */
+const QUOTES_ZEN = [
+  '沒有一種感覺會永遠留著,好的壞的都是。',
+  '放下不是失去,是不再被綁著。',
+  '此刻已經足夠。',
+  '痛會來,不必再添一層苦。',
+  '有些事,條件還在慢慢形成。',
+  '對自己慈悲,也包括不苛責。',
+  {t:'洗碗的時候,就只是洗碗。', by:'一行禪師的教導'},
+  {t:'吸氣,知道自己在吸氣。', by:'正念呼吸的練習'},
+  {t:'弦太緊或太鬆,都彈不好。', by:'佛陀的琴弦之喻'},
+  {t:'面對它、接受它、處理它、放下它。', by:'聖嚴法師'},
+  {t:'需要的不多,想要的太多。', by:'聖嚴法師'}
+];
+const QUOTES_ZEN_NIGHT = [
   {t:'我已到了,已到家了。', by:'一行禪師'}
 ];
+
+/* ===== 親子教養 =====
+   正向教養的核心不是技巧,是「連結先於糾正」。這一組刻意不寫成
+   「你應該怎麼教小孩」,而是寫給那個正在當爸媽、也還在學的人。 */
+const QUOTES_PARENT = [
+  '先連結,再糾正。',
+  '孩子不是在給你難堪,他只是還在學。',
+  '情緒上來的時候,先不要教。',
+  '和善,也可以同時堅定。',
+  '犯錯是學習的一部分,不是品格問題。',
+  '罵完會後悔的話,先不要說。',
+  '他需要的可能不是道理,是先被理解。',
+  '給兩個都可以的選擇,比命令有用。',
+  '說出你看見的,勝過說一句「你好棒」。',
+  '蹲下來,和他的眼睛一樣高。',
+  '規則可以少,但要算數。',
+  '他鬧脾氣的時候,最需要人在旁邊。',
+  '每天留十分鐘,只屬於他。',
+  '你也在學怎麼當爸媽,不必馬上就會。',
+  '你的耐心也有限,累了先照顧自己。',
+  '不必當完美的父母,當願意修補的父母。',
+  '今天沒做好的,明天可以重來。',
+  '他長大的速度,比你以為的快。'
+];
+const QUOTES_PARENT_NIGHT = [
+  '今天對孩子大聲了,明天可以說對不起。',
+  '他睡著的樣子,會提醒你為什麼。',
+  '今天你也盡力了,先去睡吧。'
+];
+
+/* ===== 伴侶相處 =====
+   重點放在「修補」而不是「不吵架」—— 願意修補的關係,比從不衝突的關係長久。 */
+const QUOTES_COUPLE = [
+  '不是要贏,是要靠近。',
+  '想被理解的時候,對方可能也是。',
+  '累的時候,不談重要的事。',
+  '說出來的感謝,才是感謝。',
+  '抱怨這件事,不要變成批評這個人。',
+  '先修補,再討論對錯。',
+  '你們是同一隊的。',
+  '他做的那些小事,今天記得說一句。',
+  '有些話,換個時間說會比較好聽。',
+  '各自留一點空間,不是疏遠。',
+  '家事,也是一種愛的說法。',
+  '舊帳留在過去,今天談今天的。',
+  '問一句「你還好嗎」,常常就夠了。',
+  '不必什麼都一起,也不必什麼都分開。',
+  '兩個人都累的時候,先把事情放下。',
+  '願意修補的,比不吵架的更長久。'
+];
+const QUOTES_COUPLE_NIGHT = [
+  '今天有點僵,明天可以先開口。',
+  '睡前一句晚安,比什麼都實際。'
+];
+
+/* 句庫可以複選,設定頁可以自己開關。之後要加新主題,只要加一包進來就好。 */
+const QUOTE_PACKS = [
+  {id:'core',   lb:'手帳原生', desc:'慢下來、休息、對自己溫柔', day:QUOTES_CORE,   night:QUOTES_CORE_NIGHT},
+  {id:'zen',    lb:'佛教底色', desc:'無常、緣起、中道',         day:QUOTES_ZEN,    night:QUOTES_ZEN_NIGHT},
+  {id:'parent', lb:'親子教養', desc:'正向教養、連結先於糾正',   day:QUOTES_PARENT, night:QUOTES_PARENT_NIGHT},
+  {id:'couple', lb:'伴侶相處', desc:'修補、靠近、好好說話',     day:QUOTES_COUPLE, night:QUOTES_COUPLE_NIGHT}
+];
+const packOn = id => (state.settings.quotePacks || ['core']).includes(id);
+function activeQuotes(night){
+  const picked = QUOTE_PACKS.filter(p => packOn(p.id));
+  const pool = (picked.length ? picked : [QUOTE_PACKS[0]]).flatMap(p => night ? p.night : p.day);
+  return pool.length ? pool : QUOTE_PACKS[0].day;   /* 全部關掉也不能開天窗 */
+}
 const MOODS = [
   {v:1, e:'😣', lb:'糟糕', c:'var(--m1)'},
   {v:2, e:'😕', lb:'低落', c:'var(--m2)'},
@@ -829,7 +908,7 @@ const fmtFull = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.g
 const dayQuote = () => {
   const d = new Date();
   const n = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
-  const pool = d.getHours() >= 18 ? QUOTES_NIGHT : QUOTES;
+  const pool = activeQuotes(d.getHours() >= 18);
   return pool[n % pool.length];
 };
 /* 箴言可以是純字串,也可以是 {t, by}。有出處的才顯示出處,沒有的就不硬掛名字。 */
@@ -1007,10 +1086,10 @@ const defaultState = () => ({
   weeklyReviews: {},// {'week-start': {proud,adjust,next,updatedAt}}
   recurrences: [],  // 週期待辦範本
   settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true,
-    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null}
+    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen']}
 });
 const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
-  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null});
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen']});
 /* 舊版資料升級:保留既有紀錄,補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
@@ -1044,6 +1123,10 @@ function migrate(s){
       p: PALETTE_KEYS.includes(a && a.p) ? a.p : 'slate'
     }));
   if (!Array.isArray(s.settings.todayHidden)) s.settings.todayHidden = [];
+  /* 句庫設定只收認得的 id;舊資料沒有這個欄位就給預設的兩包 */
+  s.settings.quotePacks = Array.isArray(s.settings.quotePacks)
+    ? s.settings.quotePacks.filter(id => QUOTE_PACKS.some(p => p.id === id))
+    : ['core', 'zen'];
   s.v = 8;
   return s;
 }
@@ -2514,6 +2597,12 @@ function settingsSheet(){
         : '⚠️ 目前資料被視為<b>可清除的暫存</b>。空間不足或長期沒開啟時可能消失。'}</div>
     ${persistState.supported && !persistState.granted ? `<button class="btn ghost full sm" style="margin-top:8px" data-act="persist-ask">開啟長期保存</button>
     <div class="hint" style="margin-top:6px">若沒有成功,把手帳<b>加入主畫面</b>後再試一次,通過機率會高很多。</div>` : ''}
+    <div class="lbl">每日箴言</div>
+    <div class="hint" style="margin-bottom:7px">首頁那句話要從哪些句庫抽?可以複選;入夜之後每一包都會換成適合收尾的話。</div>
+    <div class="seg">
+      ${QUOTE_PACKS.map(p => `<button class="chip ${packOn(p.id) ? 'on' : ''}" data-act="quote-pack" data-id="${p.id}">${p.lb}<span class="filter-count">${p.day.length + p.night.length}</span></button>`).join('')}
+    </div>
+    <div class="hint" style="margin-top:7px">${QUOTE_PACKS.filter(p => packOn(p.id)).map(p => p.desc).join(' · ') || '一包都沒開的話,會自動用「手帳原生」。'}<br>目前抽樣範圍:白天 ${activeQuotes(false).length} 句、夜晚 ${activeQuotes(true).length} 句。</div>
     <div class="lbl">生活領域</div>
     <div class="row"><span class="grow hint">${areaList().map(a => esc(a.lb)).join('、')}</span><button class="chip" data-act="area-manage">管理 ›</button></div>
     <div class="lbl">今日版面</div>
@@ -3328,6 +3417,13 @@ const actions = {
     catch(e){ toast('這個環境無法下載檔案'); }
   },
   'haptics': d => { state.settings.haptics = d.v === '1'; save(); if(d.v==='1') buzz(12); settingsSheet(); },
+  /* 每日箴言句庫 */
+  'quote-pack': d => {
+    const cur = state.settings.quotePacks || ['core'];
+    state.settings.quotePacks = cur.includes(d.id) ? cur.filter(x => x !== d.id) : [...cur, d.id];
+    save(); settingsSheet(); renderSoon();
+  },
+
   /* 生活領域 */
   'area-manage': () => areaManagerSheet(null),
   'area-palette': d => areaManagerSheet(d.id),
