@@ -217,6 +217,66 @@ mark.hl{background:var(--gold-soft);color:inherit;border-radius:4px;padding:0 2p
   body{background-image:radial-gradient(rgba(245,230,205,.045) 1px,transparent 1.2px)}
   #tabbar{background:rgba(41,37,31,.92)}#toast{background:#EDE3D5;color:#29231D}
 }
+/* ============ 可選配色 ============
+   只覆蓋色票，版面與間距完全不動；深色模式各有一套對應值。
+   每組都維持原本的對比關係：紙、卡、墨、強調、量表五層。 */
+body[data-theme="sea"]{
+  --paper:#EEF2F5;--card:#F9FBFC;--card2:#F1F5F8;--field:#FCFDFE;
+  --ink:#2C3A44;--ink2:#54666F;--ink3:#6D7F89;
+  --line:rgba(40,70,88,.16);--line-soft:rgba(40,70,88,.09);
+  --acc:#2E6E8E;--acc-deep:#245A76;--acc-soft:#DCE9F0;--acc-tint:rgba(46,110,142,.12);
+  --sage:#3E7F76;--sage-deep:#2F675F;--sage-soft:#DDEDE9;--sage-track:#DAEAE6;
+  --gold:#B08A3E;--gold-soft:#F0E7D3;
+  --h0:#E3EBEF;--h1:#A9C9CD;--h2:#7FAFB4;--h3:#3E7F76;--h4:#2B5F58;
+}
+body[data-theme="forest"]{
+  --paper:#F0F3EC;--card:#FAFBF7;--card2:#F2F6ED;--field:#FCFDFA;
+  --ink:#333B2E;--ink2:#5A6552;--ink3:#727D69;
+  --line:rgba(60,75,45,.16);--line-soft:rgba(60,75,45,.09);
+  --acc:#A2622F;--acc-deep:#8A5228;--acc-soft:#F1E4D7;--acc-tint:rgba(162,98,47,.12);
+  --sage:#4F7A3C;--sage-deep:#3C612C;--sage-soft:#E4EDDA;--sage-track:#E2EBD8;
+  --gold:#AE8F33;--gold-soft:#F1EACF;
+  --h0:#E6EBE0;--h1:#AAC094;--h2:#7FA167;--h3:#4F7A3C;--h4:#3A5E2B;
+}
+body[data-theme="rose"]{
+  --paper:#F7F0F1;--card:#FDF9FA;--card2:#F8F1F3;--field:#FFFCFD;
+  --ink:#43333A;--ink2:#6B5A61;--ink3:#82717A;
+  --line:rgba(90,55,70,.16);--line-soft:rgba(90,55,70,.09);
+  --acc:#A84A62;--acc-deep:#8E3C52;--acc-soft:#F3DFE5;--acc-tint:rgba(168,74,98,.12);
+  --sage:#6B7A52;--sage-deep:#57663F;--sage-soft:#EAEEDF;--sage-track:#E8ECDD;
+  --gold:#B8933F;--gold-soft:#F3EAD4;
+  --h0:#EFE6E9;--h1:#C1BE99;--h2:#98A272;--h3:#6B7A52;--h4:#51603C;
+}
+@media (prefers-color-scheme:dark){
+  body[data-theme="sea"]{
+    --paper:#151B21;--card:#1F272E;--card2:#273139;--field:#1A2229;
+    --ink:#E3ECF2;--ink2:#B7C7D1;--ink3:#92A4AF;
+    --line:rgba(210,232,245,.19);--line-soft:rgba(210,232,245,.11);
+    --acc:#6BAAC9;--acc-deep:#84BCD8;--acc-soft:#1F3B4A;--acc-tint:rgba(107,170,201,.18);
+    --sage:#63AFA3;--sage-deep:#7FC5B9;--sage-soft:#1D3733;--sage-track:#27403C;
+    --gold:#CFAA61;--gold-soft:#3B3520;
+    --h0:#26313A;--h1:#2F5A58;--h2:#3C766F;--h3:#4E9187;--h4:#63AFA3;
+  }
+  body[data-theme="forest"]{
+    --paper:#181C15;--card:#22271D;--card2:#2A3125;--field:#1D2218;
+    --ink:#E9EFE0;--ink2:#C2CCB4;--ink3:#9CA890;
+    --line:rgba(225,240,210,.19);--line-soft:rgba(225,240,210,.11);
+    --acc:#D08A55;--acc-deep:#E09B66;--acc-soft:#3D2A1B;--acc-tint:rgba(208,138,85,.18);
+    --sage:#87A966;--sage-deep:#A8C88A;--sage-soft:#2A331F;--sage-track:#333C28;
+    --gold:#CBAA55;--gold-soft:#38321C;
+    --h0:#2A3123;--h1:#3E5230;--h2:#54703F;--h3:#6C8F52;--h4:#87A966;
+  }
+  body[data-theme="rose"]{
+    --paper:#1E181A;--card:#292124;--card2:#31282C;--field:#241D20;
+    --ink:#F2E6EA;--ink2:#CFBCC3;--ink3:#AC98A0;
+    --line:rgba(245,225,235,.19);--line-soft:rgba(245,225,235,.11);
+    --acc:#DD8098;--acc-deep:#E894AA;--acc-soft:#452630;--acc-tint:rgba(221,128,152,.18);
+    --sage:#9BA877;--sage-deep:#B4C08F;--sage-soft:#2F3626;--sage-track:#383F2E;
+    --gold:#D3AF62;--gold-soft:#3E3620;
+    --h0:#332A2E;--h1:#4C5138;--h2:#666E48;--h3:#818C5C;--h4:#9BA877;
+  }
+}
+
 @media (min-width:760px){#app{max-width:680px}.card{padding:18px}.page-head h1{font-size:28px}}
 body.text-large .tt,body.text-large .h-name,body.text-large .g-title,body.text-large .f-item .tt{font-size:18px}
 body.text-large .hint,body.text-large .sub,body.text-large .h-sub{font-size:14px}
@@ -391,8 +451,14 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .ring circle{fill:none;stroke-width:4;stroke-linecap:round}
 .ring .rb{stroke:var(--sage-track)}
 .ring .rf{stroke:var(--sage);transition:stroke-dashoffset .45s cubic-bezier(.3,.8,.4,1)}
-.ring b{position:absolute;inset:0;display:grid;place-items:center;font-size:14px;font-weight:700;letter-spacing:-.02em}
-.ring b i{font-style:normal;font-size:10.5px;font-weight:500;color:var(--ink3)}
+/* 這裡原本用 grid，但「文字 + <i>」是兩個 grid 項目，會被排成上下兩列。
+   改成 flex 讓分子分母回到同一行，分母略小並往下對齊。 */
+.ring b{
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+  font-size:16px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
+}
+.ring b i{font-style:normal;font-size:10px;font-weight:500;color:var(--ink3);transform:translateY(2.5px);margin-left:.5px}
+.ring b svg{width:17px;height:17px;color:var(--sage)}
 .f-item{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px dashed var(--line-soft)}
 .f-item:last-of-type{border-bottom:none}
 .f-num{
@@ -933,6 +999,20 @@ const QUOTE_PACKS = [
 ];
 /* 稱呼可以自己設定：親子與伴侶那兩包裡的稱謂都是佔位符，渲染時才代入。
    這樣「{ps}也在學怎麼當{pr}」對每個家庭都念得順，而不是只對某一種家庭。 */
+const THEMES = [
+  {id:'paper',  lb:'溫暖紙感', sw:'#B85C43'},
+  {id:'sea',    lb:'海藍',     sw:'#2E6E8E'},
+  {id:'forest', lb:'森綠',     sw:'#4F7A3C'},
+  {id:'rose',   lb:'玫瑰',     sw:'#A84A62'}
+];
+/* 配色只換色票，版面不動。順便把 theme-color 換掉，
+   加到主畫面後 iOS 的狀態列才不會和手帳撞色。 */
+function applyTheme(){
+  const id = THEMES.some(t => t.id === state.settings.theme) ? state.settings.theme : 'paper';
+  if (id === 'paper') delete document.body.dataset.theme; else document.body.dataset.theme = id;
+  const paper = getComputedStyle(document.body).getPropertyValue('--paper').trim();
+  if (paper) document.querySelectorAll('meta[name="theme-color"]').forEach(m => m.setAttribute('content', paper));
+}
 const DEFAULT_TERMS = {me:'爸爸', partner:'老婆', childPn:'他'};
 const SELF_ROLES = ['爸爸', '媽媽', '家長'];
 const CHILD_PRONOUNS = ['他', '她'];
@@ -1249,10 +1329,10 @@ const defaultState = () => ({
   weeklyReviews: {},// {'week-start': {proud,adjust,next,updatedAt}}
   recurrences: [],  // 週期待辦範本
   settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true,
-    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[]}
+    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper'}
 });
 const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
-  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[]});
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper'});
 /* 舊版資料升級：保留既有紀錄，補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
@@ -1298,6 +1378,7 @@ function migrate(s){
     childPn: CHILD_PRONOUNS.includes(tm.childPn) ? tm.childPn : DEFAULT_TERMS.childPn
   } : null;
   if (!Array.isArray(s.settings.mutedQuotes)) s.settings.mutedQuotes = [];
+  if (!['paper','sea','forest','rose'].includes(s.settings.theme)) s.settings.theme = 'paper';
   const cq = s.customQuotes;
   s.customQuotes = {
     day: Array.isArray(cq && cq.day) ? cq.day.filter(x => typeof x === 'string').slice(0, 200) : [],
@@ -2171,7 +2252,7 @@ function vToday(){
           <circle class="rb" cx="23" cy="23" r="19"></circle>
           <circle class="rf" cx="23" cy="23" r="19" stroke-dasharray="${CIRC}" stroke-dashoffset="${(CIRC * (1 - fDone / FOCUS_MAX)).toFixed(1)}"></circle>
         </svg>
-        <b>${fDone}<i>/${FOCUS_MAX}</i></b>
+        <b>${focus.length && fDone === focus.length ? ICONS.check : `${fDone}<i>/${FOCUS_MAX}</i>`}</b>
       </div></span>
     </div>
     ${focus.map((t, i) => `<div class="f-item ${t.done ? 'done' : ''} fade-item" ${!t.done?`draggable="true" data-task-id="${t.id}" data-today-item="1"`:''}>
@@ -2786,7 +2867,7 @@ const SETTINGS_SECTIONS = [
       ? `上次備份 ${new Date(state.settings.lastBackupAt).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}`
       : '還沒備份過'},
   {id:'guard',  ic:'🔒', lb:'鎖定與提醒', sub:() => `${lockOn() ? '已上鎖' : '未上鎖'} · ${reminderCfg().enabled ? `每晚 ${reminderCfg().time}` : '沒有提醒'}`},
-  {id:'about',  ic:'📖', lb:'說明與關於', sub:() => `使用提示、快捷鍵、版本 v${state.v}`}
+  {id:'about',  ic:'📖', lb:'說明與工具', sub:() => '安裝方式、鍵盤快捷鍵、清除資料'}
 ];
 function settingsSheet(){
   const counts = `${state.tasks.length} 筆待辦 · ${state.habits.length} 個習慣 · ${Object.keys(state.reflections).length} 篇反思 · ${state.goals.length} 個目標`;
@@ -2799,7 +2880,13 @@ function settingsSheet(){
       <span class="grow"><strong>${x.lb}</strong><span class="hint" style="display:block">${x.sub()}</span></span>
       <span class="set-arrow">›</span>
     </button>`).join('')}
-    <div class="hint" style="margin-top:14px;line-height:1.8">所有資料只存在<b>這台裝置</b>上，不會上傳，也沒有任何追蹤。清除瀏覽器資料或更換裝置時可能遺失，建議偶爾備份。</div>`);
+    <div class="hint" style="margin-top:14px;line-height:1.8">所有資料只存在<b>這台裝置</b>上，不會上傳，也沒有任何追蹤。清除瀏覽器資料或更換裝置時可能遺失，建議偶爾備份。</div>
+    <div class="hint" style="margin-top:12px;line-height:1.8">🌙 建議每晚睡前：勾掉今天完成的事 → 習慣打卡 → 寫一句反思。</div>
+    <div class="lbl">關於</div>
+    <div class="hint" style="line-height:1.95">
+      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作。<br>
+      版本 v${state.v} · 沒有帳號、沒有伺服器、沒有追蹤，所有紀錄都留在你自己的裝置裡。
+    </div>`);
 }
 function settingsSection(id){
   const back = lb => `<button class="set-back" data-act="settings">‹ 設定</button><h2 style="margin-top:4px">${lb}</h2>`;
@@ -2827,6 +2914,9 @@ function settingsSection(id){
 
   if (id === 'look'){
     body = `${back('外觀與版面')}
+    <div class="lbl">配色</div>
+    <div class="seg">${THEMES.map(t => `<button class="chip ${(state.settings.theme || 'paper') === t.id ? 'on' : ''}" data-act="theme-set" data-v="${t.id}"><i class="adot" style="background:${t.sw}"></i>${t.lb}</button>`).join('')}</div>
+    <div class="hint" style="margin-top:7px">深色模式會自動套用對應的深色版本，不必另外設定。</div>
     <div class="lbl">生活領域</div>
     <div class="row"><span class="grow hint">${areaList().map(a => esc(a.lb)).join('、')}</span><button class="chip" data-act="area-manage">管理 ›</button></div>
     <div class="lbl">今日版面</div>
@@ -2858,7 +2948,7 @@ function settingsSection(id){
     <div class="row">
       <button class="btn ghost grow" data-act="export-file">備份檔</button>
       <button class="btn ghost grow" data-act="export-copy">複製文字</button>
-      <button class="btn plain grow" data-act="export-md">可讀版</button>
+      <button class="btn ghost grow" data-act="export-md">可讀版</button>
     </div>
     <div class="lbl">桌面自動備份</div>
     ${!fsBackup.supported()
@@ -2908,18 +2998,12 @@ function settingsSection(id){
   }
 
   if (id === 'about'){
-    body = `${back('說明與關於')}
+    body = `${back('說明與工具')}
     <div style="font-size:13.5px;color:var(--ink2);line-height:1.9">
       📲 <b>裝到 iPhone 主畫面：</b>用 Safari 開啟本頁 →「分享」→「加入主畫面」，之後就像 App 一樣使用。<br>
-      🤖 <b>Android：</b>用 Chrome 開啟 → 選單 →「安裝應用程式」。<br>
-      🌙 建議每晚睡前：勾掉今天完成的事 → 習慣打卡 → 寫一句反思。
+      🤖 <b>Android：</b>用 Chrome 開啟 → 選單 →「安裝應用程式」。
     </div>
     <button class="btn plain full sm" style="margin-top:12px" data-act="shortcuts">電腦版鍵盤快捷鍵</button>
-    <div class="lbl">關於</div>
-    <div class="hint" style="line-height:1.95">
-      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作。<br>
-      版本 v${state.v} · 沒有帳號、沒有伺服器、沒有追蹤，所有紀錄都留在你自己的裝置裡。
-    </div>
     <hr class="divider">
     <button class="danger-link" style="padding-top:2px" data-act="wipe">清除全部資料</button>`;
   }
@@ -3427,6 +3511,10 @@ const actions = {
   'settings': () => settingsSheet(),
   'settings-go': d => settingsSection(d.s),
   'shortcuts': () => shortcutsSheet(),
+  'theme-set': d => {
+    if (!THEMES.some(t => t.id === d.v)) return;
+    state.settings.theme = d.v; save(); applyTheme(); settingsSection('look');
+  },
   'text-size':d=>{state.settings.textSize=d.v;document.body.classList.toggle('text-large',d.v==='large');save();settingsSection('look');},
   'global-search':()=>globalSearchSheet(''),
   'search-go':d=>{closeSheet();go(d.tab);if(d.k)setTimeout(()=>refSheet(d.k),120);},
@@ -4097,6 +4185,8 @@ function renderSoon(){ clearTimeout(rsT); rsT = setTimeout(render, 250); }
 /* =================== 啟動 =================== */
 updateStorageBanner();
 document.body.classList.toggle('text-large',state.settings.textSize==='large');
+applyTheme();
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 /* 有附 sw.js 的完整部署才註冊；單檔使用時不會在主控台留下 404 */
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
   fetch('./sw.js',{method:'HEAD'})
