@@ -121,7 +121,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .btn.ghost{background:transparent;color:var(--acc);border:1.5px solid var(--acc-tint);background:var(--acc-soft)}
 .btn.ghost:active{background:var(--acc-tint)}
 .btn.sm{padding:7px 12px;font-size:13px;border-radius:10px}
-.btn.plain{background:transparent;color:var(--ink2);border:1px solid var(--line)}
+.btn.plain{background:var(--card2);color:var(--ink2);border:1px solid var(--line)}
+.btn.plain:active{background:var(--line-soft)}
 .chip{
   display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;
   background:var(--card2);border:1px solid var(--line-soft);font-size:13.5px;color:var(--ink2);
@@ -668,7 +669,7 @@ body.privacy-blur #app{filter:blur(18px)}
     這本手帳需要放在一個網址上、用 Safari 開啟才能運作。請改用 Safari 開啟正式網址，或聯絡提供這份手帳的人協助設定。
   </div>
 </noscript>
-<div id="storageBanner" hidden>📱 目前是<b>預覽模式</b>,資料不會被保存。放到 Safari 或正式網址使用時，所有紀錄都會存在你的手機裡。</div>
+<div id="storageBanner" hidden>📱 目前是<b>預覽模式</b>，資料不會被保存。放到 Safari 或正式網址使用時，所有紀錄都會存在你的手機裡。</div>
 <div id="app">
   <main id="view" aria-live="polite"></main>
 </div>
@@ -684,7 +685,7 @@ const APP_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAIAAAB7
 const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAIACAIAAAB7GkOtAAALeklEQVR42u3cwWsUVxzAcf8xtVFboz3rpYLQohIasSC1xBIP4ikSEW+2EFDPijcrUhddQygEFfTkQfQgWRVjEuO6SXrwwYosZncym90s89584HMzEJiZ9/vuvjdxW31xDoAS2uYSAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAAAiAqwAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgAgAK4CgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACQM9qj+4/uzE1Ozm2oWt//3Hhyu89yvOL6Eq4feEmepIRALqY+0+mzv9zaHd+p3/b+dPp7T3q6jfSlXBDlQABYIPRPz1+bBPzRQCiEG6uDCAAtNHtp34BiPfbgKcdAeCL9y+e3h090MtMEYC4hNsdbronHwEw/Xud/gKgAQgAJZ3+AqABCAAlnf4CoAEIAJGZnRzr1xwRgHiFx8BaEABK98ZnH4eIAESt9rja+PBm5eO71fp8q8by209Lry0WASA1/dr8EYAEVI4f/H9lqZO1xkJogyUjACTiZeVmfyeIAMTu1YNbGQ1oZiB8S7B2BIDobe7PfQUgYTNnRrID0KQBAkD0L//0fXwIQAKW555rgABg/0cA7AJl7QXVF2vWkQBQ9rc/BSAlDy+O5wlA4ExYAHAAIABlPAZoso4EgChtxewQgDTkD4CTAAFAAASgpAFYrc9bSgKAAAiAACAACIAACAACgAAIgAAgAAiAAAgAAoAACIAAIAAIgAAIAAKAAAiAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAiAAAoAACICrIAACgAAIAAIgAAIgAAKAAAiAAAiAACAAAiAAAiAACIAACIAACAACIAACgAAgAAIgAAgAAiAAAoAAIAACIAAIAAIgAAKAACAAAiAACAACIAACgAAgAAIgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAACIAAIAAIgAAKAAAgAAiAAAiAAAoAACIAACIAAIAACIAACIAAIgAAIgAAIAAIgAAJgNQkAAiAAAoAAIAACIAAIAAIgAAKAACAAAiAACAACIAACgAAgAAIgAAgAAiAAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACIAACAACIAAIgAAgAAKAAAiAAAiAACAAAiAAAiAACIAACIAACAACIAACIAACgAAIgAAgAAiAAAgAAoAACIAAIAAIgAAIAAKAAAiAACAACIAACAACgAAIgAAgAAiA+SsACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAIgAAgAAiAAAoAACAACIAACIAACgAAIgAAIgAAgAAIgAAIgAAiAAAiAAAgAAiAAAmA1CQACIAACgAAgAAIgAAgAAiAAAoAAIAACIAAIAAIgAAKAACAAAiAACAACIAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIgAAIAAIgAAiAACAAAoAACIAACIAAIAACIAACIAAIgAAIgAAIAAIgAAIgAAKAAAiAACAACIAACAACgAAIgAAgAAiAAAgAAoAACIAAIAAIgAAIAAKAAAiAACAACIARLAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAAAiAACAACIAACgAAIAAIgAAIgAAKAAAiAAAiAACAAAiAAAiAACIAACIAACAACIAACgAAgAAIgAAgAAiAAAoAAIAACIAAIAAIgAAKAACAAAiAACAACIAACgAAgAAIgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAIAACIAAIAAIgAAKAAAgAAiAACIAAIAACIAACIAAIgAAIgAAIAAIgAAIgAAKAAAiAAAiAACAAAiAACAACIAACgAAgAAIgAAgAAiAAAoAAIAACIAAIAAIgAAKAACAAAiAACAACYAQLAAKAACAACAACgAAgAAgAAoAAIAAIAAKAACAACAACgAAgAAgAAoAAUIQAXBj57sgpARAABICSBeDc6M7wM9d+HhIAAUAAKFEAwj99/bHLR4cEQAAQAEoRgCOntl8/vCtnKsxfAUAASCcA30z/phMndwiAACAApByAy0eH2v5wqELbA2HzVwAQAFIIQPPgt5O2B8LmrwAgAEQfgNaD307WHwibvwKAABB3ANYf/ObMhvkrAAgAcQcg5/RffyBs/goAAkDEAeh08NtJ64Gw+SsACACxBiD74HfDA2HzVwAQAKIMQJ6D3+wDYfNXABAA4gtA+Ozf1dZ/24SYvwKAABBfABAABAABQAAQAAQAAUAAEAAEAAFAABAABAABQAAQAFINwO1fdt87u3fmr/3/Xf0xqE4M3/l1jzmbQAAaH95YSgJAfKbHjw1mmvx78vuvo79VSIJRW0AzZ0byB8A6EgCiNDs5NpjP/m2nf1Nog4FbNA8vjuec/isf31lHAkCUXlZuDmCahI/5naZ/ENpg4BbNqwe38kz/tcZCfbFmHQkAUXr/4ukApsn0pX0ZAQjCVwQzt1CW557b/RcAHAP0Qfb0twsU6QGA6S8A2AXaWHVi2DeAlPZ/1hoLpr8AkIi7owe2dKBU/vwhY/pPX9pn5hZH5fjB7NHv1FcASErt0f0t31Xo/BaQvwYolNrjavh0H6b8an2+VWP57ael1xaLAOB90L69CWr3v1DCY2AtCABlfB1oqzeCmntB1Ynhpntn99r6L5TwAITHwFoQADQA0x8BQAMw/REANADTHwEgcU+mzpuMZRButKcdAaDNu6ED+79CGbxwc8Mt9pwjAGRlwLeB9D71G/0IAN2V4NmNqdnJMSIVbp+5jwAAIAAACACAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACACAALgEAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAALgKgAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAIgKsAIAAACAAAAgCAAAAgAAAIAAACAIAAACAAAAgAAAIAgAAAIAAACAAAAgCAAAAgAABs2mdzomONJ38TAQAAAABJRU5ErkJggg==';
 (function installManifest(){
   try{
-    /* manifest 走 blob: URL,裡面的網址必須是絕對路徑，否則瀏覽器會整條忽略 */
+    /* manifest 走 blob: URL，裡面的網址必須是絕對路徑，否則瀏覽器會整條忽略 */
     const START_URL = location.origin + location.pathname;
     const SCOPE = START_URL.replace(/[^/]*$/, '');
     const mf = {
@@ -711,6 +712,9 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
   }catch(e){}
 })();
 /* =================== 常數 =================== */
+/* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
+   使用者不需要知道。沿革見 CHANGELOG.md。 */
+const APP_VERSION = '1.0';
 const WD = ['日','一','二','三','四','五','六'];
 /* 每日箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -748,7 +752,7 @@ const QUOTES_CORE = [
   '把你對別人的體諒，也留一份給自己。',
   '沒有人規定你要一直往前。',
   '不完美的今天，也值得被記下來。',
-  /* 等待與未知：有些日子根本沒有「下一步」,那也是生活 */
+  /* 等待與未知：有些日子根本沒有「下一步」，那也是生活 */
   '等待的日子，也算生活。',
   /* 改變與放下：以前很想要、現在不想要了，不是失敗 */
   '改變主意，也是一種答案。',
@@ -866,7 +870,7 @@ const QUOTES_ZEN_NIGHT = [
 ];
 
 /* ===== 親子教養 =====
-   這一包的作用不是「允許你不完美」,而是在事情發生前先提醒自己：
+   這一包的作用不是「允許你不完美」，而是在事情發生前先提醒自己：
    快吼出來的時候踩一下煞車、記得抬頭看看孩子的眼睛。
    所以句子刻意具體、有動作、有畫面，而不是抽象的安慰。 */
 const QUOTES_PARENT = [
@@ -992,7 +996,7 @@ const QUOTE_PACKS = [
   {id:'zen',    lb:'佛教底色', desc:'無常、緣起、中道',         day:QUOTES_ZEN,    night:QUOTES_ZEN_NIGHT},
   {id:'parent', lb:'親子教養', desc:'正向教養、連結先於糾正',   day:QUOTES_PARENT, night:QUOTES_PARENT_NIGHT},
   {id:'couple', lb:'伴侶相處', desc:'修補、靠近、好好說話',     day:QUOTES_COUPLE, night:QUOTES_COUPLE_NIGHT},
-  /* 自己寫的句子：用 getter 讀 state,加完立刻生效，不必重載 */
+  /* 自己寫的句子：用 getter 讀 state，加完立刻生效，不必重載 */
   {id:'mine', lb:'我自己的', desc:'你自己寫下的話',
     get day(){ return (state.customQuotes && state.customQuotes.day) || []; },
     get night(){ return (state.customQuotes && state.customQuotes.night) || []; }}
@@ -1088,7 +1092,7 @@ const EMOJI_GROUPS = {
   '工作':['💼','✅','📌','📊','🗂️','📨','☎️','🤝','🎯','🧑‍💻','🛠️','🚀']
 };
 const EMOJIS = [...new Set(Object.values(EMOJI_GROUPS).flat())];
-/* 空狀態插畫。寫成內嵌 SVG 而不是圖檔：會跟著深色模式換色、任何尺寸都銳利,
+/* 空狀態插畫。寫成內嵌 SVG 而不是圖檔：會跟著深色模式換色、任何尺寸都銳利，
    而且每張只有幾百位元組 —— 對一個要保持單檔的手帳來說，這比點陣圖划算太多。 */
 const ART = {
   sprout:`<svg class="art" viewBox="0 0 96 76" fill="none" aria-hidden="true">
@@ -1154,8 +1158,8 @@ function quoteHTML(q){
   return `<span class="qt">${esc(text)}</span>${by ? `<span class="quote-by">— ${esc(by)}</span>` : ''}`;
 }
 const greeting = () => { const h = new Date().getHours(); if (h < 5) return '夜深了，記得休息'; if (h < 11) return '早安，新的一天'; if (h < 14) return '午安，保持節奏'; if (h < 18) return '下午好，繼續加油'; return '晚安，回顧一下今天吧'; };
-/* 搜尋命中的字highlight。先轉義再包 <mark>,順序反過來就會開一個 XSS 的門。
-   大小寫轉換若讓長度變了（某些語系會）,寧可不標色也不要切錯位置。 */
+/* 搜尋命中的字highlight。先轉義再包 <mark>，順序反過來就會開一個 XSS 的門。
+   大小寫轉換若讓長度變了（某些語系會），寧可不標色也不要切錯位置。 */
 function hi(text, q){
   const s = String(text ?? '');
   const term = String(q ?? '').trim();
@@ -1282,15 +1286,15 @@ function updateStorageBanner(){
     el.innerHTML = '⚠️ <b>這台裝置的儲存空間已滿，剛才的變動沒有存進去。</b>請先到設定下載備份檔，再清理瀏覽器空間。 <button data-act="settings" style="text-decoration:underline;font-weight:700">去備份</button>';
   } else if (!store.ok){
     el.hidden = false; el.classList.remove('danger');
-    el.innerHTML = '📱 目前是<b>預覽模式</b>,資料不會被保存。放到 Safari 或正式網址使用時，所有紀錄都會存在你的手機裡。';
+    el.innerHTML = '📱 目前是<b>預覽模式</b>，資料不會被保存。放到 Safari 或正式網址使用時，所有紀錄都會存在你的手機裡。';
   } else if (store.bytes > STORAGE_WARN_BYTES){
     el.hidden = false; el.classList.remove('danger');
-    el.innerHTML = `📦 手帳已經用掉約 ${Math.round(store.bytes / 1048576 * 10) / 10} MB,接近瀏覽器對單一網站的上限。<b>建議先下載備份</b>,再清掉很久以前的已完成待辦。 <button data-act="settings" style="text-decoration:underline;font-weight:700">去備份</button>`;
+    el.innerHTML = `📦 手帳已經用掉約 ${Math.round(store.bytes / 1048576 * 10) / 10} MB，接近瀏覽器對單一網站的上限。<b>建議先下載備份</b>，再清掉很久以前的已完成待辦。 <button data-act="settings" style="text-decoration:underline;font-weight:700">去備份</button>`;
   } else {
     el.hidden = true;
   }
 }
-/* 長期保存：瀏覽器預設把網站資料當「暫存」,空間不足或長期沒開啟時可能清掉。
+/* 長期保存：瀏覽器預設把網站資料當「暫存」，空間不足或長期沒開啟時可能清掉。
    取得 persist 授權後才算真正安全；iOS 上「加入主畫面」會大幅提高通過機率。 */
 const persistState = {supported:false, granted:false};
 async function checkPersist(ask){
@@ -1305,7 +1309,7 @@ async function checkPersist(ask){
 }
 const idbMirror={
   db:null,
-  /* v2 多了 handles（桌面自動備份的檔案授權）。Service Worker 那邊改成不指定版本開啟,
+  /* v2 多了 handles（桌面自動備份的檔案授權）。Service Worker 那邊改成不指定版本開啟，
      否則舊版號會撞上 VersionError。 */
   open(){if(this.db)return Promise.resolve(this.db);if(typeof indexedDB==='undefined')return Promise.reject();return new Promise((resolve,reject)=>{const q=indexedDB.open('life_journal_rescue',2);q.onupgradeneeded=()=>{const db=q.result;if(!db.objectStoreNames.contains('snapshots'))db.createObjectStore('snapshots',{keyPath:'at'});if(!db.objectStoreNames.contains('handles'))db.createObjectStore('handles',{keyPath:'id'});};q.onsuccess=()=>{this.db=q.result;resolve(this.db);};q.onerror=()=>reject(q.error);});},
   async setHandle(h){const db=await this.open();return new Promise((res,rej)=>{const r=db.transaction('handles','readwrite').objectStore('handles').put({id:'backup',h});r.onsuccess=()=>res(true);r.onerror=()=>rej(r.error);});},
@@ -1353,10 +1357,10 @@ function migrate(s){
   s.habitLog = s.habitLog || {}; s.reflections = s.reflections || {};
   s.recurrences = s.recurrences || [];
   s.settings = Object.assign(SETTINGS_DEFAULTS(), s.settings || {});
-  /* v7:習慣補上建立日（影響熱度圖分母）,待辦補上未來排程日 */
+  /* v7:習慣補上建立日（影響熱度圖分母），待辦補上未來排程日 */
   s.habits.forEach(h => { if (!h.createdAt) h.createdAt = 0; });
   s.tasks.forEach(t => { if (t.dueDate === undefined) t.dueDate = null; if (t.note === undefined) t.note = ''; });
-  /* v8:自訂生活領域。舊資料沒有這個欄位就給預設四個；有的話逐欄清洗,
+  /* v8:自訂生活領域。舊資料沒有這個欄位就給預設四個；有的話逐欄清洗，
      顏色只收調色盤裡的代號，名稱長度設上限 —— 壞掉的備份檔進不來。 */
   s.areas = (Array.isArray(s.areas) && s.areas.length ? s.areas : DEFAULT_AREAS)
     .slice(0, AREA_MAX)
@@ -1557,7 +1561,7 @@ function maybeCelebrate(wasAlreadyDone){
   celebrate(); toast(n >= FOCUS_MAX ? '今天的三件重點都完成了 🎉' : `今天排的 ${n} 件重點都完成了 🎉`);
 }
 
-/* 本週平衡：一律由真實紀錄計算（近 7 天完成的事 + 習慣打卡）,不預設任何數字 */
+/* 本週平衡：一律由真實紀錄計算（近 7 天完成的事 + 習慣打卡），不預設任何數字 */
 function areaBalance(){
   const counts = {}; areaList().forEach(a => counts[a.id] = 0);
   const since = addDays(new Date(), -6); since.setHours(0, 0, 0, 0);
@@ -1678,7 +1682,7 @@ function nextOccurrence(r){
   return found;
 }
 function overdueTodayTasks(){ const tk=todayKey(); return state.tasks.filter(t => !t.done && t.bucket === 'today' && t.scheduledDate && t.scheduledDate < tk); }
-/* 排到未來某一天的事：到了那天自己走進「今天」,平時不佔版面 */
+/* 排到未來某一天的事：到了那天自己走進「今天」，平時不佔版面 */
 function promoteScheduled(k){
   let n = 0;
   state.tasks.forEach(t => {
@@ -2575,7 +2579,7 @@ function habitSheet(h){
       <div class="emoji-grid" id="emojiGrid">${(group==='最近'?recent:EMOJI_GROUPS[group]).map(e => `<button class="${currentEmoji===e?'on':''}" data-act="pick-emoji" data-e="${e}">${e}</button>`).join('')}</div>
     </div>
     <div id="customEmojiPanel" style="${custom?'':'display:none'};margin-top:9px">
-      <input class="field" id="customEmoji" value="${custom?esc(currentEmoji):''}" placeholder="貼上一個 Emoji,例如 🦋" inputmode="text" maxlength="16">
+      <input class="field" id="customEmoji" value="${custom?esc(currentEmoji):''}" placeholder="貼上一個 Emoji，例如 🦋" inputmode="text" maxlength="16">
       <div class="hint" style="margin-top:6px">可以從手機 Emoji 鍵盤輸入任何符號；會使用第一個完整 Emoji。</div>
     </div>
     <div class="sheet-actions">
@@ -2600,7 +2604,7 @@ function onThisDay(){
 function randomPastReflection(seed){
   const tk = todayKey();
   const ks = Object.keys(state.reflections).filter(k => k < tk && state.reflections[k] && (state.reflections[k].text||'').trim());
-  if (ks.length < 5) return null;                        /* 紀錄太少時不做「回顧」,免得每天都翻到同一篇 */
+  if (ks.length < 5) return null;                        /* 紀錄太少時不做「回顧」，免得每天都翻到同一篇 */
   const k = ks[Math.abs(hashInt(tk + '|' + (seed||0))) % ks.length];
   return {k, lb:'從前的某一天', r:state.reflections[k]};
 }
@@ -2829,7 +2833,7 @@ function taskSheet(t){
     <input class="field" id="tTitle" value="${esc(t.title)}" maxlength="60">
     <div class="lbl">備註（可留白）</div>
     <textarea class="field" id="tNote" style="min-height:84px" placeholder="細節、電話、連結，或是你當時在想的事…" maxlength="2000">${esc(t.note || '')}</textarea>
-    ${g ? `<div class="hint" style="margin-top:8px">⚑ 來自目標「${esc(g.title)}」,完成時會自動推進目標。</div>` : ''}
+    ${g ? `<div class="hint" style="margin-top:8px">⚑ 來自目標「${esc(g.title)}」，完成時會自動推進目標。</div>` : ''}
     ${t.recurrenceId?`<div class="nudge">這是週期待辦的一次安排。修改標題只影響這一次。<button data-act="repeat-edit" data-id="${t.recurrenceId}">修改未來週期 ›</button></div>`:''}
     ${t.done ? '<div class="hint" style="margin-top:8px">已完成。</div>' : ''}
     <div class="lbl">安排在</div>
@@ -2880,12 +2884,11 @@ function settingsSheet(){
       <span class="grow"><strong>${x.lb}</strong><span class="hint" style="display:block">${x.sub()}</span></span>
       <span class="set-arrow">›</span>
     </button>`).join('')}
-    <div class="hint" style="margin-top:14px;line-height:1.8">所有資料只存在<b>這台裝置</b>上，不會上傳，也沒有任何追蹤。清除瀏覽器資料或更換裝置時可能遺失，建議偶爾備份。</div>
-    <div class="hint" style="margin-top:12px;line-height:1.8">🌙 建議每晚睡前：勾掉今天完成的事 → 習慣打卡 → 寫一句反思。</div>
+    <div class="hint" style="margin-top:16px;line-height:1.8">🌙 建議每晚睡前：勾掉今天完成的事 → 習慣打卡 → 寫一句反思。</div>
     <div class="lbl">關於</div>
     <div class="hint" style="line-height:1.95">
-      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作。<br>
-      版本 v${state.v} · 沒有帳號、沒有伺服器、沒有追蹤，所有紀錄都留在你自己的裝置裡。
+      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作 · v${APP_VERSION}<br>
+      所有資料只存在<b>這台裝置</b>上，不會上傳，也沒有任何追蹤。清除瀏覽器資料或更換裝置時可能遺失，建議偶爾備份。
     </div>`);
 }
 function settingsSection(id){
@@ -2918,7 +2921,10 @@ function settingsSection(id){
     <div class="seg">${THEMES.map(t => `<button class="chip ${(state.settings.theme || 'paper') === t.id ? 'on' : ''}" data-act="theme-set" data-v="${t.id}"><i class="adot" style="background:${t.sw}"></i>${t.lb}</button>`).join('')}</div>
     <div class="hint" style="margin-top:7px">深色模式會自動套用對應的深色版本，不必另外設定。</div>
     <div class="lbl">生活領域</div>
-    <div class="row"><span class="grow hint">${areaList().map(a => esc(a.lb)).join('、')}</span><button class="chip" data-act="area-manage">管理 ›</button></div>
+    <button class="set-row" style="border-bottom:none;padding-left:0" data-act="area-manage">
+      <span class="grow"><strong>管理生活領域</strong><span class="hint" style="display:block">${areaList().map(a => esc(a.lb)).join('、')}</span></span>
+      <span class="set-arrow">›</span>
+    </button>
     <div class="lbl">今日版面</div>
     <div class="hint" style="margin-bottom:7px">${Array.isArray(state.settings.todayLayout) && state.settings.todayLayout.length
       ? `已自訂順序${todayHidden().length ? `，並收起 ${todayHidden().length} 個區塊` : ''}。`
@@ -3267,7 +3273,7 @@ function mergeState(mine, theirs){
     });
   });
 
-  /* 反思：先看 updatedAt,沒有的話留比較長的那一篇，避免把寫過的字弄不見 */
+  /* 反思：先看 updatedAt，沒有的話留比較長的那一篇，避免把寫過的字弄不見 */
   report.reflections = {added:0, updated:0};
   Object.keys(theirs.reflections || {}).forEach(k => {
     const t = theirs.reflections[k], m = s.reflections[k];
@@ -3342,7 +3348,7 @@ function doImport(text){
       const merged = mergeState(state, incoming);
       const R = merged.report, add = o => (o && o.added) || 0, upd = o => (o && o.updated) || 0;
       const totalAdd = add(R.tasks)+add(R.habits)+add(R.habitLog)+add(R.reflections)+add(R.goals)+add(R.goalRecords)+add(R.areas)+add(R.weeklyReviews)+add(R.recurrences);
-      confirmSheet('合併這份備份？', `${whenTxt}兩邊的紀錄會<b>併在一起</b>,現在的東西不會被刪掉。<br><br>
+      confirmSheet('合併這份備份？', `${whenTxt}兩邊的紀錄會<b>併在一起</b>，現在的東西不會被刪掉。<br><br>
         新增：${add(R.tasks)} 筆待辦 · ${add(R.habitLog)} 天打卡 · ${add(R.reflections)} 篇反思 · ${add(R.goals) + add(R.goalRecords)} 筆目標紀錄<br>
         更新：${upd(R.reflections)} 篇反思 · ${upd(R.tasks)} 筆待辦<br><br>
         重複的不會變成兩筆；衝突時留下較新的那一份。<b>手帳鎖、版面與提醒維持這台裝置的設定。</b>${newer ? '<br><br>⚠️ 這份備份來自比目前更新的版本，部分內容可能無法顯示。' : ''}`, '合併', () => {
@@ -3375,7 +3381,7 @@ async function hashPin(salt, pin){
       return 's:' + [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
     }
   }catch(e){}
-  return 'f:' + hashText(raw);   /* file:// 之類的非安全環境沒有 WebCrypto,退回較弱的雜湊 */
+  return 'f:' + hashText(raw);   /* file:// 之類的非安全環境沒有 WebCrypto，退回較弱的雜湊 */
 }
 const lockCfg = () => state.settings.lock || null;
 const lockOn = () => { const c = lockCfg(); return !!(c && c.hash); };
@@ -3799,7 +3805,7 @@ const actions = {
     ui.quoteBump = (ui.quoteBump || 0) + 1;
     const inSheet = $('#sheetRoot').children.length > 0;
     render();
-    if (inSheet) quoteMenuSheet();   /* 從彈窗按的就更新彈窗,從首頁按的就只換首頁那句 */
+    if (inSheet) quoteMenuSheet();   /* 從彈窗按的就更新彈窗，從首頁按的就只換首頁那句 */
   },
   'quote-mute': d => {
     const m = state.settings.mutedQuotes || (state.settings.mutedQuotes = []);
@@ -3880,7 +3886,7 @@ const actions = {
       if (ui.todoArea === d.id) ui.todoArea = 'all';
       save(); render(); areaManagerSheet(null); toast(`已刪除「${a.lb}」`);
     };
-    if (used) confirmSheet(`刪除「${a.lb}」?`, `有 ${used} 件事屬於這個領域，它們會變成<b>未分類</b>,內容不會刪除。`, '刪除', go, true);
+    if (used) confirmSheet(`刪除「${a.lb}」?`, `有 ${used} 件事屬於這個領域，它們會變成<b>未分類</b>，內容不會刪除。`, '刪除', go, true);
     else go();
   },
   'area-reset': () => confirmSheet('回到預設的四個領域？', '自訂的名稱與顏色會消失；原本標在自訂領域上的事會變成未分類。', '回到預設', () => {
@@ -4228,7 +4234,7 @@ if(launchFocusAdd){
 /* 一開啟就先擋在鎖前面，畫面內容不會閃出來 */
 lockNow();
 scheduleReminder();
-/* 切到背景先糊掉畫面（App 切換器的縮圖也看不到）,回來時看離開多久決定要不要上鎖 */
+/* 切到背景先糊掉畫面（App 切換器的縮圖也看不到），回來時看離開多久決定要不要上鎖 */
 document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden'){
     lockRT.hiddenAt = Date.now();
