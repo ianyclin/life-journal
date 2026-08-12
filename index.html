@@ -2209,7 +2209,7 @@ function vToday(){
         <div class="meter" style="margin:7px 0 8px"><i style="width:${p.pct}%"></i></div>
         ${next ? `<div class="row">
             <span class="grow" style="font-size:13.5px;color:var(--ink2)">下一步：${esc(next.title)}</span>
-            ${queued ? '<span class="s-today q">已排入</span>' : `<button class="s-today" data-act="step-queue" data-gid="${g.id}" data-sid="${next.id}">→ 排入今天</button>`}
+            ${queued ? `<button class="s-today q" data-act="step-unqueue" data-sid="${next.id}" aria-label="取消排入今天">已排入 ↺</button>` : `<button class="s-today" data-act="step-queue" data-gid="${g.id}" data-sid="${next.id}">→ 排入今天</button>`}
           </div>`
         : `<button class="row" style="width:100%;text-align:left" data-act="tab" data-tab="goal">
             <span class="grow" style="font-size:13px;color:var(--ink3)">還沒拆步驟，點我去加第一步 ›</span>
@@ -2753,7 +2753,7 @@ function goalCardHTML(g){
         <button class="ck ${s.done ? 'on' : ''}" data-act="step-toggle" data-gid="${g.id}" data-sid="${s.id}" aria-label="完成步驟">${ICONS.check}</button>
         <div class="grow st">${esc(s.title)}</div>
         ${s.done ? '' : queued
-          ? '<span class="s-today q">已排入</span>'
+          ? `<button class="s-today q" data-act="step-unqueue" data-sid="${s.id}" aria-label="取消排入今天">已排入 ↺</button>`
           : `<button class="s-today" data-act="step-queue" data-gid="${g.id}" data-sid="${s.id}">→ 今天</button>`}
       </div>`;
     }).join('')}
@@ -3777,6 +3777,15 @@ const actions = {
   'step-toggle': d => {
     const g = goalById(d.gid); const s = g && g.steps.find(x => x.id === d.sid);
     if (!s) return; setStepDone(g, s, !s.done); if (s.done) buzz(10); save(); render();
+  },
+  /* 排入今天之後可以再按一次收回 —— 手滑點到不該沒有退路 */
+  'step-unqueue': d => {
+    const hit = state.tasks.filter(t => t.stepId === d.sid && !t.done);
+    if (!hit.length){ render(); return; }
+    const edited = hit.some(t => (t.note || '').trim());
+    state.tasks = state.tasks.filter(t => !(t.stepId === d.sid && !t.done));
+    save(); render();
+    toast(edited ? '已從今天移除（備註也一起移除）' : '已從今天移除');
   },
   'step-queue': d => {
     const g = goalById(d.gid); const s = g && g.steps.find(x => x.id === d.sid);
