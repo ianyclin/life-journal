@@ -257,8 +257,9 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
   margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);
   font-family:var(--serif);font-size:14.5px;color:var(--ink2);line-height:1.75;
 }
-.greet-quote::before{content:"「";color:var(--acc);font-weight:700}
-.greet-quote::after{content:"」";color:var(--acc);font-weight:700}
+.greet-quote .qt::before{content:"「";color:var(--acc);font-weight:700}
+.greet-quote .qt::after{content:"」";color:var(--acc);font-weight:700}
+.quote-by{display:block;margin-top:6px;font-family:var(--sans);font-size:12px;color:var(--ink3);letter-spacing:.03em}
 
 /* 待辦項目 */
 .t-item{display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px dashed var(--line-soft)}
@@ -609,24 +610,312 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 })();
 /* =================== 常數 =================== */
 const WD = ['日','一','二','三','四','五','六'];
-const QUOTES = [
+/* 每日箴言。語氣要跟這本手帳一致:陪伴,不催促;提醒,不評分。
+   刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
+const QUOTES_CORE = [
+  /* 把今天過好 */
   '把今天過好,就是把人生過好。',
-  '不必很厲害才開始,要開始才會很厲害。',
-  '微小的堅持,終將長成巨大的改變。',
-  '你怎麼過一天,就怎麼過一生。',
-  '慢慢來,比較快。',
-  '完成,勝過完美。',
-  '種一棵樹最好的時間是十年前,其次是現在。',
-  '別小看重複的力量。',
-  '今天的你,是過去每個選擇的總和。',
-  '把時間留給重要的事,而不只是緊急的事。',
-  '記錄,是為了看見自己走過的路。',
-  '好好休息,也是前進的一部分。',
-  '方向對了,就不怕路遠。',
+  '平凡的日子,也是人生。',
+  '生活不是一張待辦清單,是你真正過的每一天。',
+  '日子是一天一天過的,不是一口氣衝完的。',
+  /* 開始與小步 */
+  '從最小的那一步開始,它會帶你走很遠。',
+  '一次一件事,就已經夠了。',
+  '五分鐘也算數。',
   '與其想很多,不如先做一點。',
+  '別小看重複的力量。',
+  /* 慢下來 */
+  '慢慢來,比較快。',
+  '慢一點也沒關係,你不是在跟誰比賽。',
+  '走得慢,不代表走錯路。',
+  '值得的事,通常需要一點時間。',
+  '有些事急不得,就像天亮。',
+  '不趕時間的時候,人才看得見風景。',
+  /* 休息 */
+  '休息不是浪費時間,是讓時間好好待你。',
+  '不必把所有事做完,才能好好休息。',
+  '睡飽一點,很多事會自己變簡單。',
+  '今天做不到的事,明天還在,別急。',
+  '有些日子,撐過去就已經很好了。',
+  /* 對自己溫柔 */
   '溫柔地對待今天的自己。',
-  '所有偉大的事,都是由小事堆成的。'
+  '對自己說話,可以再溫柔一點。',
+  '你已經做得比你以為的還多。',
+  '你不需要每天都很好。',
+  '允許自己有做不好的日子。',
+  '把你對別人的體諒,也留一份給自己。',
+  '沒有人規定你要一直往前。',
+  '不完美的今天,也值得被記下來。',
+  /* 等待與未知:有些日子根本沒有「下一步」,那也是生活 */
+  '等待的日子,也算生活。',
+  /* 改變與放下:以前很想要、現在不想要了,不是失敗 */
+  '改變主意,也是一種答案。',
+  '有些事,不做也是一種選擇。',
+  '斷了,也可以不急著接回來。',
+  /* 沒有進展的日子:慢至少還在走,但有些日子是真的原地 */
+  '沒有進展的日子,也不是空白。',
+  '原地待一會兒,也沒什麼。',
+  '不是每件事,都需要變得更好。',
+  /* 玩與無用之事:不是所有喜歡都需要被變成習慣或目標 */
+  '有些喜歡,不需要變成目標。',
+  '今天想玩,也是一個理由。',
+  '沒有用途的時間,也可以很好。',
+  /* 自己的節奏、告別 */
+  '別人的進度,不是你的時鐘。',
+  '有些告別,不需要立刻想通。',
+  '沒被看見的事,也真實發生過。',
+  '有些事,現在還沒有答案。',
+  '你的時間有限,值得放在你真正在意的人與事上。',
+
+  /* 中斷之後 */
+  '斷掉了沒關係,接回來就好。',
+  '中斷不等於失敗,只是中間休息了一下。',
+  '重來不是從零開始,你走過的都還在。',
+  '回來的時候,這裡都在。',
+  '跌倒的地方,也長得出東西。',
+  /* 完成 */
+  '完成,勝過完美。',
+  '做完一件事,就替今天畫一個句點。',
+  '完成的事值得被看見一眼,再放下。',
+  '把「做完」和「做好」分開,你會輕鬆很多。',
+  /* 取捨與平衡 */
+  '把時間留給重要的事,而不只是緊急的事。',
+  '選擇做什麼,也是在選擇不做什麼。',
+  '少做一點,才有力氣做好真正在乎的。',
+  '忙不等於重要。',
+  /* 方向 */
+  '走錯的路,也是認識自己的一種方式。',
+  '不確定的時候,先做眼前這一件。',
+  '你不必知道全部的路,只要知道下一步。',
+  /* 記錄 */
+  '記錄,是為了看見自己走過的路。',
+  '寫下來,是為了以後能回頭看看自己。',
+  '今天的一句話,是明年的一份禮物。',
+  '記錄不是為了證明什麼,只是為了記得。',
+  '那些當時的小事,後來都變成了故事。',
+  /* 生活與關係 */
+  '好好吃飯,好好說話,好好睡覺。',
+  '記得問問身邊的人,今天過得如何。',
+  '有人惦記著你,你也惦記著別人。',
+  '每個季節,都有它適合做的事。',
+  '把窗戶打開,今天的空氣是新的。'
 ];
+/* 入夜之後換一組:這種時間該說的是收尾的話,不是再加把勁的話。 */
+const QUOTES_CORE_NIGHT = [
+  '今天辛苦了。',
+  '把今天放下,明天再說。',
+  '夜深了,剩下的明天再想。',
+  '願你今晚,睡得安穩。',
+  '沒做完的,明天還有明天的力氣。',
+  '今天也走到這裡了,已經很好。',
+  '把肩膀放鬆,今天可以結束了。',
+  '不必檢討今天,看見它就好。',
+  '睡前那幾分鐘,是留給自己的。',
+  '明天的事,交給明天的你。',
+  '今天沒有答案,也可以先到這裡。'
+];
+
+/* ===== 佛教底色 =====
+   出處查證過:聖嚴法師兩句見法鼓山官方(四它、108 自在語)。
+   一行禪師與正念呼吸那兩句標的是「教導/練習來源」而不是逐字原句 ——
+   梅村官方繁中的用字與這裡不同,不宣稱是可核對的原文。
+   刻意不收「痛是難免的,苦是可以選擇的」:《箭經》講的是不要在痛上再加
+   第二支箭,不是說受苦的人可以選擇不苦;那句容易變成「你還在苦是你自己選的」。 */
+const QUOTES_ZEN = [
+  '沒有一種感覺會永遠留著,好的壞的都是。',
+  '放下不是失去,是不再被綁著。',
+  '此刻已經足夠。',
+  '痛會來,不必再添一層苦。',
+  '有些事,條件還在慢慢形成。',
+  '對自己慈悲,也包括不苛責。',
+  {t:'洗碗的時候,就只是洗碗。', by:'一行禪師的教導'},
+  {t:'吸氣,知道自己在吸氣。', by:'正念呼吸的練習'},
+  {t:'弦太緊或太鬆,都彈不好。', by:'佛陀的琴弦之喻'},
+  {t:'面對它、接受它、處理它、放下它。', by:'聖嚴法師'},
+  {t:'需要的不多,想要的太多。', by:'聖嚴法師'},
+  {t:'工作要趕不要急,身心要鬆不要緊。', by:'聖嚴法師'},
+  /* 緣起 */
+  '事情不是單獨發生的。',
+  '有些結果,不只是一個人的原因。',
+  '條件變了,事情也可能跟著變。',
+  /* 中道 */
+  '不放縱,也不必折磨自己。',
+  '用力過頭,也可能走不久。',
+  /* 無我 */
+  '今天的自己,也不必永遠如此。',
+  '現在的念頭,不是全部的你。',
+  /* 慈心 */
+  '願自己安穩,也願別人安穩。',
+  '不喜歡一個人,也不必願他受苦。',
+  /* 布施 */
+  '讓人少一點害怕,也是一種給予。',
+  /* 懺悔:看見過失、補救,而不是無限自責 */
+  '承認做錯,不必順便否定自己。',
+  '後悔可以提醒,不必一直留下。',
+  /* 老病死與離別 */
+  '老去和生病,都不是例外。',
+  '有些離開,不是誰做錯了什麼。',
+  /* 言語的分寸 */
+  '不是每句真話,都要現在說。',
+  '有些沉默,比急著回答更合適。'
+];
+const QUOTES_ZEN_NIGHT = [
+  {t:'我已到了,已到家了。', by:'一行禪師'}
+];
+
+/* ===== 親子教養 =====
+   這一包的作用不是「允許你不完美」,而是在事情發生前先提醒自己:
+   快吼出來的時候踩一下煞車、記得抬頭看看孩子的眼睛。
+   所以句子刻意具體、有動作、有畫面,而不是抽象的安慰。 */
+const QUOTES_PARENT = [
+  /* 那三秒鐘可以做什麼 */
+  '要提高音量時,先把聲音放低一格。',
+  '第三次叫{c}以前,先走到{c}身邊。',
+  '手機先放下,聽{c}把這句說完。',
+  '要糾正以前,先看看{c}現在的表情。',
+  '{c}哭的時候,先別急著問為什麼。',
+  '催第二次以前,先看看是不是太趕。',
+  '出門多留五分鐘,少一次催促。',
+  '先叫{c}的名字,再說你要說的事。',
+  '想說「你怎麼又」時,先停一下。',
+  '今天至少有一次,好好聽{c}講完。',
+  '{c}靠過來的時候,先別急著推開。',
+  /* 先不要吼 */
+  '快要吼出來的時候,先閉嘴。',
+  '深呼吸三次,再開口。',
+  '音量放小,{c}反而聽得見。',
+  '情緒上來的時候,先不要教。',
+  '罵完會後悔的話,先不要說。',
+  '生氣的是這件事,不是這個孩子。',
+  '{c}不是故意的,{c}只是還不會。',
+  '{c}還小,學得慢是正常的。',
+  '你現在的語氣,{c}會記很久。',
+  '數到十,再決定下一句怎麼說。',
+  '吼完了,還是可以回去抱{c}。',
+  '你不是壞{me},你只是也很累。',
+  /* 記得抬頭看看{c} */
+  '停下來三秒,好好看看{c}。',
+  '{c}的眼睛還很清澈。',
+  '{c}笑起來的樣子,今天看過了嗎?',
+  '{c}跑過來抱你的時候,那是真的。',
+  '{c}現在的樣子,只有這一年。',
+  '{c}叫你{me}的時候,是全心全意的。',
+  '{c}長大得比你以為的快。',
+  /* 怎麼靠近 */
+  '先抱一下,再說道理。',
+  '蹲下來,和{c}的眼睛一樣高。',
+  '{c}哭的時候,不必急著讓{c}停。',
+  '{c}要的常常不是答案,是有人在。',
+  '今天抱{c}一下,比講道理有用。',
+  '{c}記得的不是你說什麼,是你在不在。',
+  '今天只陪一小段,也算陪伴。',
+  /* 和善而堅定 */
+  '和善,也可以同時堅定。',
+  '規則可以少,但要算數。',
+  '拒絕{c},也可以很溫柔。',
+  '有些行為要阻止,情緒不用阻止。',
+  '界線清楚,{c}反而安心。',
+  '說出你看見的,比稱讚更靠近{c}。',
+  '可以選的時候,留一點選擇給{c}。',
+  /* 你也在學 */
+  '犯錯是學習的一部分,不是品格問題。',
+  '說錯了,回頭改口也來得及。',
+  '你也在學怎麼當{me},不必馬上就會。',
+  '今天沒做好的,明天可以重來。',
+  '不必當完美的{me},當可以修補的{me}。'
+];
+const QUOTES_PARENT_NIGHT = [
+  '今天吼了嗎?明天可以少一次。',
+  '睡前看{c}一眼,今天就走到這裡。',
+  '今天若說重了,明天可以說對不起。',
+  '{c}睡著的樣子,會讓今天值得。',
+  '今天你也盡力了,先去睡吧。'
+];
+
+/* ===== 伴侶相處 =====
+   兩個重點:看見另一半的辛苦,以及好好把話說出口。
+   同樣寫得具體 —— 「家裡沒有自己變乾淨」比「要感謝對方」有用得多。 */
+const QUOTES_COUPLE = [
+  /* 那三秒鐘可以做什麼 */
+  '進門先看{ps}一眼,再看手機。',
+  '{ps}說完以前,先別準備你的答案。',
+  '聲音大起來時,先把音量降一格。',
+  '看到{ps}在忙,先問要不要接手。',
+  '謝謝不要只說謝謝,說清楚謝什麼。',
+  '道歉的後面,先不要接「可是」。',
+  '經過{ps}身邊時,記得真的看見{ps}。',
+  '吃飯的十分鐘,把手機翻過去。',
+  /* 看見{ps}的辛苦 */
+  '{ps}今天也累了一整天。',
+  '家裡沒有自己變乾淨。',
+  '{ps}做的那些事,你有看見嗎?',
+  '今天問{ps}一句「你還好嗎」。',
+  '{ps}也需要有人問{ps}累不累。',
+  '{ps}也在學怎麼當{pr}。',
+  '那些默默被做掉的小事,今天說一句。',
+  '看見該做的家事,就別等人提醒。',
+  /* 好好溝通 */
+  '先聽完,再回答。',
+  '想贏的時候,先停三秒。',
+  '說這件事,不要說「你總是」。',
+  '抱怨這件事,不要變成批評這個人。',
+  '太累的時候,重要的事晚點談。',
+  '有些話,換個時間更容易被聽見。',
+  '回家先說一句話,再說一件事。',
+  '有些爭執,不必分出誰贏。',
+  '願意聽,不等於一定要同意。',
+  '想被理解的時候,{ps}可能也是。',
+  /* 靠近 */
+  '牽一下手,再把該說的說完。',
+  '一起吃頓飯,勝過講清楚。',
+  '記得你們也曾經只是兩個人。',
+  '吵完了,先回到同一張桌子。',
+  '各自留一點空間,不是疏遠。',
+  '不必什麼都一起,也不必什麼都分開。',
+  '有些差異,不必解決,只要知道。',
+  '真正的道歉,包括之後的改變。',
+  '不吵架,不等於沒有問題。',
+  '關係不是靠一個人修好的。'
+];
+const QUOTES_COUPLE_NIGHT = [
+  '{ps}今天也辛苦了。',
+  '睡前有話沒說完,別用訊息繼續吵。',
+  '今天有點僵,明天再說也不遲。',
+  '睡前一句晚安,比什麼都實際。'
+];
+
+/* 句庫可以複選,設定頁可以自己開關。之後要加新主題,只要加一包進來就好。 */
+const QUOTE_PACKS = [
+  {id:'core',   lb:'手帳原生', desc:'慢下來、休息、對自己溫柔', day:QUOTES_CORE,   night:QUOTES_CORE_NIGHT},
+  {id:'zen',    lb:'佛教底色', desc:'無常、緣起、中道',         day:QUOTES_ZEN,    night:QUOTES_ZEN_NIGHT},
+  {id:'parent', lb:'親子教養', desc:'正向教養、連結先於糾正',   day:QUOTES_PARENT, night:QUOTES_PARENT_NIGHT},
+  {id:'couple', lb:'伴侶相處', desc:'修補、靠近、好好說話',     day:QUOTES_COUPLE, night:QUOTES_COUPLE_NIGHT}
+];
+/* 稱呼可以自己設定:親子與伴侶那兩包裡的稱謂都是佔位符,渲染時才代入。
+   這樣「{ps}也在學怎麼當{pr}」對每個家庭都念得順,而不是只對某一種家庭。 */
+const DEFAULT_TERMS = {me:'爸爸', partner:'老婆', childPn:'他'};
+const SELF_ROLES = ['爸爸', '媽媽', '家長'];
+const CHILD_PRONOUNS = ['他', '她'];
+const PARTNER_TERMS = {
+  '老婆':{ps:'她', pr:'媽媽'},
+  '老公':{ps:'他', pr:'爸爸'},
+  '伴侶':{ps:'對方', pr:'家長'}
+};
+const terms = () => Object.assign({}, DEFAULT_TERMS, state.settings.terms || {});
+function fillTerms(text){
+  const t = terms();
+  const m = PARTNER_TERMS[t.partner] || PARTNER_TERMS['伴侶'];
+  return String(text)
+    .replace(/\{me\}/g, t.me).replace(/\{p\}/g, t.partner)
+    .replace(/\{ps\}/g, m.ps).replace(/\{pr\}/g, m.pr)
+    .replace(/\{c\}/g, t.childPn);
+}
+const packOn = id => (state.settings.quotePacks || ['core']).includes(id);
+function activeQuotes(night){
+  const picked = QUOTE_PACKS.filter(p => packOn(p.id));
+  const pool = (picked.length ? picked : [QUOTE_PACKS[0]]).flatMap(p => night ? p.night : p.day);
+  return pool.length ? pool : QUOTE_PACKS[0].day;   /* 全部關掉也不能開天窗 */
+}
 const MOODS = [
   {v:1, e:'😣', lb:'糟糕', c:'var(--m1)'},
   {v:2, e:'😕', lb:'低落', c:'var(--m2)'},
@@ -727,7 +1016,18 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const todayKey = () => dkey(new Date());
 const fmtMD = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.getDate()}日`; };
 const fmtFull = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.getDate()}日 · 週${WD[d.getDay()]}`; };
-const dayQuote = () => { const d = new Date(); const n = Math.floor((d - new Date(d.getFullYear(),0,0)) / 864e5); return QUOTES[n % QUOTES.length]; };
+const dayQuote = () => {
+  const d = new Date();
+  const n = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
+  const pool = activeQuotes(d.getHours() >= 18);
+  return pool[n % pool.length];
+};
+/* 箴言可以是純字串,也可以是 {t, by}。有出處的才顯示出處,沒有的就不硬掛名字。 */
+function quoteHTML(q){
+  const text = fillTerms(typeof q === 'string' ? q : q.t);   /* 先代入稱呼,再轉義 */
+  const by = typeof q === 'string' ? '' : (q.by || '');
+  return `<span class="qt">${esc(text)}</span>${by ? `<span class="quote-by">— ${esc(by)}</span>` : ''}`;
+}
 const greeting = () => { const h = new Date().getHours(); if (h < 5) return '夜深了,記得休息'; if (h < 11) return '早安,新的一天'; if (h < 14) return '午安,保持節奏'; if (h < 18) return '下午好,繼續加油'; return '晚安,回顧一下今天吧'; };
 /* 搜尋命中的字highlight。先轉義再包 <mark>,順序反過來就會開一個 XSS 的門。
    大小寫轉換若讓長度變了(某些語系會),寧可不標色也不要切錯位置。 */
@@ -897,10 +1197,10 @@ const defaultState = () => ({
   weeklyReviews: {},// {'week-start': {proud,adjust,next,updatedAt}}
   recurrences: [],  // 週期待辦範本
   settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true,
-    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null}
+    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null}
 });
 const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
-  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null});
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null});
 /* 舊版資料升級:保留既有紀錄,補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
@@ -934,6 +1234,17 @@ function migrate(s){
       p: PALETTE_KEYS.includes(a && a.p) ? a.p : 'slate'
     }));
   if (!Array.isArray(s.settings.todayHidden)) s.settings.todayHidden = [];
+  /* 句庫設定只收認得的 id;舊資料沒有這個欄位就給預設的兩包 */
+  s.settings.quotePacks = Array.isArray(s.settings.quotePacks)
+    ? s.settings.quotePacks.filter(id => QUOTE_PACKS.some(p => p.id === id))
+    : ['core', 'zen'];
+  /* 稱呼只收清單裡的值,匯入的備份塞不進奇怪的字 */
+  const tm = s.settings.terms;
+  s.settings.terms = tm && typeof tm === 'object' ? {
+    me: SELF_ROLES.includes(tm.me) ? tm.me : DEFAULT_TERMS.me,
+    partner: PARTNER_TERMS[tm.partner] ? tm.partner : DEFAULT_TERMS.partner,
+    childPn: CHILD_PRONOUNS.includes(tm.childPn) ? tm.childPn : DEFAULT_TERMS.childPn
+  } : null;
   s.v = 8;
   return s;
 }
@@ -1758,7 +2069,7 @@ function vToday(){
       <button class="icon-btn" data-act="global-search" aria-label="搜尋人生手帳">⌕</button>
       <button class="icon-btn" data-act="settings" aria-label="設定與備份">${ICONS.gear}</button>
     </div>
-    <div class="greet-quote">${dayQuote()}</div>
+    <div class="greet-quote">${quoteHTML(dayQuote())}</div>
   </div>
 
   ${!state.settings.onboardingDismissed&&(starter||meaningful<4)?`<div class="card">
@@ -2404,6 +2715,21 @@ function settingsSheet(){
         : '⚠️ 目前資料被視為<b>可清除的暫存</b>。空間不足或長期沒開啟時可能消失。'}</div>
     ${persistState.supported && !persistState.granted ? `<button class="btn ghost full sm" style="margin-top:8px" data-act="persist-ask">開啟長期保存</button>
     <div class="hint" style="margin-top:6px">若沒有成功,把手帳<b>加入主畫面</b>後再試一次,通過機率會高很多。</div>` : ''}
+    <div class="lbl">每日箴言</div>
+    <div class="hint" style="margin-bottom:7px">首頁那句話要從哪些句庫抽?可以複選;入夜之後每一包都會換成適合收尾的話。</div>
+    <div class="seg">
+      ${QUOTE_PACKS.map(p => `<button class="chip ${packOn(p.id) ? 'on' : ''}" data-act="quote-pack" data-id="${p.id}">${p.lb}<span class="filter-count">${p.day.length + p.night.length}</span></button>`).join('')}
+    </div>
+    <div class="hint" style="margin-top:7px">${QUOTE_PACKS.filter(p => packOn(p.id)).map(p => p.desc).join(' · ') || '一包都沒開的話,會自動用「手帳原生」。'}<br>目前抽樣範圍:白天 ${activeQuotes(false).length} 句、夜晚 ${activeQuotes(true).length} 句。</div>
+    ${packOn('parent') || packOn('couple') ? `<div class="lbl">句子裡怎麼稱呼</div>
+      <div class="hint" style="margin-bottom:6px">親子與伴侶那兩包會用到稱謂,設成你家的說法會念得比較順。</div>
+      ${packOn('parent') ? `<div class="hint" style="margin:8px 0 5px">孩子叫你</div>
+      <div class="seg">${SELF_ROLES.map(v => `<button class="chip ${terms().me === v ? 'on' : ''}" data-act="term-set" data-k="me" data-v="${v}">${v}</button>`).join('')}</div>
+      <div class="hint" style="margin:9px 0 5px">提到孩子時用</div>
+      <div class="seg">${CHILD_PRONOUNS.map(v => `<button class="chip ${terms().childPn === v ? 'on' : ''}" data-act="term-set" data-k="childPn" data-v="${v}">${v}</button>`).join('')}</div>` : ''}
+      ${packOn('couple') ? `<div class="hint" style="margin:9px 0 5px">你的另一半</div>
+      <div class="seg">${Object.keys(PARTNER_TERMS).map(v => `<button class="chip ${terms().partner === v ? 'on' : ''}" data-act="term-set" data-k="partner" data-v="${v}">${v}</button>`).join('')}</div>` : ''}
+      <div class="hint" style="margin-top:9px">例如:${esc(fillTerms('{ps}也在學怎麼當{pr}。'))} · ${esc(fillTerms('{c}叫你{me}的時候,是全心全意的。'))}</div>` : ''}
     <div class="lbl">生活領域</div>
     <div class="row"><span class="grow hint">${areaList().map(a => esc(a.lb)).join('、')}</span><button class="chip" data-act="area-manage">管理 ›</button></div>
     <div class="lbl">今日版面</div>
@@ -3218,6 +3544,20 @@ const actions = {
     catch(e){ toast('這個環境無法下載檔案'); }
   },
   'haptics': d => { state.settings.haptics = d.v === '1'; save(); if(d.v==='1') buzz(12); settingsSheet(); },
+  /* 每日箴言句庫與稱呼 */
+  'term-set': d => {
+    const t = terms();
+    const ok = {me:SELF_ROLES, childPn:CHILD_PRONOUNS, partner:Object.keys(PARTNER_TERMS)}[d.k];
+    if (!ok || !ok.includes(d.v)) return;
+    state.settings.terms = Object.assign({}, t, {[d.k]:d.v});
+    save(); settingsSheet(); renderSoon();
+  },
+  'quote-pack': d => {
+    const cur = state.settings.quotePacks || ['core'];
+    state.settings.quotePacks = cur.includes(d.id) ? cur.filter(x => x !== d.id) : [...cur, d.id];
+    save(); settingsSheet(); renderSoon();
+  },
+
   /* 生活領域 */
   'area-manage': () => areaManagerSheet(null),
   'area-palette': d => areaManagerSheet(d.id),
