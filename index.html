@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="人生手帳">
 <meta name="theme-color" content="#F6F1E7" media="(prefers-color-scheme: light)">
@@ -25,8 +26,9 @@
   --gold:#C9A24B; --gold-soft:#F3EAD3;
   --h0:#EFE7D5; --h1:#A6B478; --h2:#7F9854; --h3:#5B7A3D; --h4:#3F5B2A;
   --m1:#B4432B; --m2:#D28A6F; --m3:#B3A896; --m4:#93A877; --m5:#567A40;
-  /* 生活領域(已通過 CVD / 對比驗證,四色皆恆常搭配文字標籤) */
-  --a-work:#2B5FA5; --a-family:#E07A3C; --a-health:#3C7A38; --a-self:#A96FC4;
+  /* 生活領域調色盤(已通過 CVD / 對比驗證,顏色恆常搭配文字標籤,從不單獨承擔辨識) */
+  --ap-blue:#2B5FA5; --ap-orange:#E07A3C; --ap-green:#3C7A38; --ap-purple:#A96FC4;
+  --ap-red:#B4432B; --ap-teal:#2A7570; --ap-gold:#8A6D1F; --ap-slate:#5A6B7B;
   --r:16px;
   --serif:"New York", ui-serif, "Songti TC", "Noto Serif TC", "PingFang TC", Georgia, serif;
   --sans:-apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Helvetica Neue", Arial, sans-serif;
@@ -118,6 +120,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .chip:active{transform:scale(.96)}
 .chip.on{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
 .hint{font-size:12.5px;color:var(--ink3)}
+.link{color:var(--acc);font-weight:650;text-decoration:underline;text-underline-offset:2.5px;text-decoration-thickness:1.5px}
+.link:active{opacity:.65}
 .divider{border:none;border-top:1px dashed var(--line);margin:12px 0}
 .empty{
   text-align:center;padding:26px 12px;color:var(--ink3);font-size:14px;
@@ -195,7 +199,8 @@ textarea.field{resize:none;min-height:120px;line-height:1.7}
     --h1:#4E6136;--h2:#657F44;--h3:#7C9C53;--h4:#95B968;
     --m1:#E0745A;--m2:#D9A188;--m3:#A79A88;--m4:#9DBA7C;--m5:#7FA85F;
     /* 深色底下把領域色提亮,維持同樣的辨識度與對比 */
-    --a-work:#7BAEEC;--a-family:#F0A268;--a-health:#78C271;--a-self:#C89FE3;
+    --ap-blue:#7BAEEC;--ap-orange:#F0A268;--ap-green:#78C271;--ap-purple:#C89FE3;
+    --ap-red:#E0745A;--ap-teal:#6FC3BC;--ap-gold:#D9B45F;--ap-slate:#A3B4C4;
     --shadow:0 1px 2px rgba(0,0,0,.18),0 7px 20px rgba(0,0,0,.16);
   }
   body{background-image:radial-gradient(rgba(245,230,205,.045) 1px,transparent 1.2px)}
@@ -456,6 +461,73 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .kbd{flex:none;min-width:64px;text-align:center;font-family:var(--sans);font-size:12.5px;font-weight:650;color:var(--ink2);
   background:var(--card2);border:1px solid var(--line);border-bottom-width:2px;border-radius:7px;padding:4px 8px}
 
+/* ============ 待辦備註 ============ */
+.t-note{
+  font-size:12.5px;color:var(--ink2);line-height:1.6;margin-top:5px;
+  border-left:2px solid var(--line);padding-left:8px;white-space:pre-wrap;word-break:break-word;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+/* ============ 生活領域管理 ============ */
+.area-row{display:flex;align-items:center;gap:9px;padding:9px 0 4px}
+.swatch{width:30px;height:30px;border-radius:10px;border:1px solid var(--line-soft);flex:none}
+.swatch:active{transform:scale(.93)}
+.pal{display:grid;grid-template-columns:repeat(8,1fr);gap:7px;margin:2px 0 4px}
+.pal button{aspect-ratio:1;border-radius:9px;border:2.5px solid transparent}
+.pal button.on{border-color:var(--ink2)}
+.area-use{font-size:11.5px;color:var(--ink3);margin:0 0 8px 2px;border-bottom:1px dashed var(--line-soft);padding-bottom:9px}
+
+/* ============ 人生時光軸 ============ */
+.tl-head{position:sticky;top:0;z-index:2;background:var(--card);font-family:var(--serif);
+  font-size:15px;font-weight:700;color:var(--ink2);padding:9px 0 5px;letter-spacing:.04em}
+.tl-item{display:flex;gap:11px}
+.tl-rail{width:28px;flex:none;display:flex;flex-direction:column;align-items:center}
+.tl-dot{width:28px;height:28px;border-radius:50%;background:var(--card2);border:1px solid var(--line-soft);
+  display:grid;place-items:center;font-size:14px;flex:none}
+.tl-line{flex:1;width:2px;background:var(--line-soft);margin:3px 0 0}
+.tl-body{flex:1;min-width:0;padding:2px 0 15px}
+.tl-date{font-size:11.5px;color:var(--ink3)}
+.tl-title{font-size:14.5px;font-weight:600;margin-top:2px;word-break:break-word;line-height:1.45}
+.tl-note{font-size:13px;color:var(--ink2);margin-top:4px;line-height:1.7;word-break:break-word}
+
+/* ============ 手帳鎖 ============ */
+#lockScreen{
+  position:fixed;inset:0;z-index:200;background:var(--paper);
+  background-image:radial-gradient(rgba(90,70,45,.05) 1px, transparent 1.2px);background-size:22px 22px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:15px;
+  padding:calc(env(safe-area-inset-top) + 24px) 24px calc(env(safe-area-inset-bottom) + 24px);
+}
+#lockScreen .lk-title{font-family:var(--serif);font-size:21px;font-weight:700}
+#lockScreen .lk-hint{font-size:13px;color:var(--ink2);text-align:center;line-height:1.7;max-width:290px}
+.pin-dots{display:flex;gap:13px;margin:2px 0 4px}
+.pin-dots i{width:13px;height:13px;border-radius:50%;background:transparent;border:1.8px solid var(--ink3);transition:all .15s}
+.pin-dots i.on{background:var(--acc);border-color:var(--acc);transform:scale(1.1)}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:11px;width:100%;max-width:270px}
+.pin-pad button{
+  aspect-ratio:1.6;border-radius:15px;background:var(--card);border:1px solid var(--line-soft);
+  box-shadow:var(--shadow);font-size:22px;font-family:var(--serif);color:var(--ink);
+}
+.pin-pad button:active{transform:scale(.95);background:var(--card2)}
+.pin-pad button.fn{font-size:13.5px;font-family:var(--sans);color:var(--ink2);background:transparent;box-shadow:none;border-color:transparent}
+.shake{animation:shake .34s}
+@keyframes shake{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+body.locked #app,body.locked #tabbar,body.locked #storageBanner{pointer-events:none;filter:blur(15px)}
+/* 切到背景時先糊掉,避免留在 App 切換畫面的縮圖裡 */
+body.privacy-blur #app{filter:blur(18px)}
+
+/* ============ 今日版面編輯 ============ */
+.lay-bar{display:flex;align-items:center;gap:4px;margin-bottom:9px;padding:5px 6px;border-radius:10px;background:var(--card2)}
+.lay-bar .nm{font-size:12.5px;font-weight:650;color:var(--ink2);flex:1;min-width:0;letter-spacing:.02em}
+.lay-bar button{padding:5px 7px;border-radius:8px;color:var(--ink2);font-size:13px;flex:none}
+.lay-bar button:active{background:var(--card)}
+.lay-bar button:disabled{opacity:.3}
+.lay-bar .lay-drag{cursor:grab;touch-action:none;color:var(--ink3);font-size:15px}
+.lay-card > .card{outline:1.5px dashed var(--line);outline-offset:3px}
+.lay-card.off .card{opacity:.45}
+.lay-dragging{opacity:.5}
+.lay-over{outline:2.5px dashed var(--acc)!important;outline-offset:3px}
+.lay-tip{background:var(--acc-soft);border:1px solid var(--acc-tint)}
+
 /* Toast */
 #toast{
   position:fixed;left:50%;bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 18px);
@@ -507,6 +579,13 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
       start_url:START_URL, scope:SCOPE, id:START_URL,
       display:'standalone', orientation:'portrait-primary',
       background_color:'#F6F1E7', theme_color:'#F6F1E7', lang:'zh-Hant-TW', dir:'ltr',
+      categories:['productivity','lifestyle'],
+      /* 主畫面長按圖示的捷徑,直接跳到那件事,不用先看一次首頁 */
+      shortcuts:[
+        {name:'今天最重要的三件事', short_name:'今日', url:START_URL+'?tab=today'},
+        {name:'快速記下一件待辦', short_name:'待辦', url:START_URL+'?tab=todo&add=1'},
+        {name:'寫今晚的反思', short_name:'反思', url:START_URL+'?tab=reflect'}
+      ],
       icons:[
         {src:APP_ICON, sizes:'512x512', type:'image/png', purpose:'any'},
         {src:APP_ICON_MASKABLE, sizes:'512x512', type:'image/png', purpose:'maskable'}
@@ -549,14 +628,29 @@ const SUGGEST_HABITS = [
   {e:'🌅', n:'早起', a:'health'},{e:'🏃', n:'運動', a:'health'},{e:'📖', n:'閱讀', a:'self'},{e:'💧', n:'喝水', a:'health'},
   {e:'🧘', n:'冥想', a:'self'},{e:'😴', n:'早睡', a:'health'},{e:'🚶', n:'散步', a:'health'},{e:'✍️', n:'寫日記', a:'self'}
 ];
-/* 生活領域:讓每天做的事看得見重心 */
-const AREAS = [
-  {id:'work', lb:'工作', c:'var(--a-work)'},
-  {id:'family', lb:'家庭', c:'var(--a-family)'},
-  {id:'health', lb:'健康', c:'var(--a-health)'},
-  {id:'self', lb:'自己', c:'var(--a-self)'}
+/* 生活領域:讓每天做的事看得見重心。預設四個,使用者可以改名、換色、增刪。 */
+const AREA_PALETTE = {
+  blue:'var(--ap-blue)', orange:'var(--ap-orange)', green:'var(--ap-green)', purple:'var(--ap-purple)',
+  red:'var(--ap-red)', teal:'var(--ap-teal)', gold:'var(--ap-gold)', slate:'var(--ap-slate)'
+};
+const PALETTE_KEYS = Object.keys(AREA_PALETTE);
+const AREA_MAX = 8;
+const DEFAULT_AREAS = [
+  {id:'work', lb:'工作', p:'blue'},
+  {id:'family', lb:'家庭', p:'orange'},
+  {id:'health', lb:'健康', p:'green'},
+  {id:'self', lb:'自己', p:'purple'}
 ];
-const areaOf = id => AREAS.find(a => a.id === id) || null;
+/* 顏色一律回調色盤查表,不直接採用資料裡的字串 —— 匯入來路不明的備份也污染不了樣式 */
+const areaColor = a => AREA_PALETTE[a && a.p] || AREA_PALETTE.slate;
+const areaList = () => (state.areas && state.areas.length ? state.areas : DEFAULT_AREAS);
+const areaOf = id => areaList().find(a => a.id === id) || null;
+function areaUsage(id){
+  return state.tasks.filter(t => t.area === id).length
+    + state.habits.filter(h => h.area === id).length
+    + state.goals.filter(g => g.area === id).length
+    + (state.recurrences || []).filter(r => r.area === id).length;
+}
 const FOCUS_MAX = 3;
 const EMOJI_GROUPS = {
   '推薦':['✨','🌅','🏃','📖','💧','🧘','✍️','🚶','😴','🌱','☀️','🌙'],
@@ -626,7 +720,7 @@ function searchResultsHTML(q){
   const term=(q||'').trim().toLocaleLowerCase('zh-Hant');
   if(!term) return '<div class="empty" style="padding:20px">輸入文字,找回曾經寫下的事</div>';
   const hit=s=>String(s||'').toLocaleLowerCase('zh-Hant').includes(term);
-  const tasks=state.tasks.filter(t=>hit(t.title)).slice(0,12);
+  const tasks=state.tasks.filter(t=>hit(`${t.title} ${t.note||''}`)).slice(0,12);
   const goals=state.goals.filter(g=>hit(`${g.title} ${g.why||''}`)).slice(0,8);
   const records=state.goalRecords.filter(g=>hit(`${g.title} ${g.why||''}`)).slice(0,8);
   const refs=Object.keys(state.reflections).filter(k=>hit(`${state.reflections[k].text||''} ${k} ${fmtMD(k)}`)).sort().reverse().slice(0,10);
@@ -709,6 +803,19 @@ function updateStorageBanner(){
     el.hidden = true;
   }
 }
+/* 長期保存:瀏覽器預設把網站資料當「暫存」,空間不足或長期沒開啟時可能清掉。
+   取得 persist 授權後才算真正安全;iOS 上「加入主畫面」會大幅提高通過機率。 */
+const persistState = {supported:false, granted:false};
+async function checkPersist(ask){
+  try{
+    if (!navigator.storage || !navigator.storage.persisted) return false;
+    persistState.supported = true;
+    let ok = await navigator.storage.persisted();
+    if (!ok && ask && navigator.storage.persist) ok = await navigator.storage.persist();
+    persistState.granted = !!ok;
+    return persistState.granted;
+  }catch(e){ return false; }
+}
 const idbMirror={
   db:null,
   open(){if(this.db)return Promise.resolve(this.db);if(typeof indexedDB==='undefined')return Promise.reject();return new Promise((resolve,reject)=>{const q=indexedDB.open('life_journal_rescue',1);q.onupgradeneeded=()=>q.result.createObjectStore('snapshots',{keyPath:'at'});q.onsuccess=()=>{this.db=q.result;resolve(this.db);};q.onerror=()=>reject(q.error);});},
@@ -718,8 +825,9 @@ const idbMirror={
 };
 
 const defaultState = () => ({
-  v: 7,
-  tasks: [],        // + order, scheduledDate, recurrenceId, occurrenceDate
+  v: 8,
+  areas: DEFAULT_AREAS.map(a => Object.assign({}, a)),  // 可自訂的生活領域
+  tasks: [],        // + order, scheduledDate, recurrenceId, occurrenceDate, note
   habits: [],       // + minVersion
   habitLog: {},     // {'YYYY-MM-DD': {habitId:'done'|'rest'}}
   reflections: {},  // {'YYYY-MM-DD': {mood,text,updatedAt}}
@@ -727,13 +835,16 @@ const defaultState = () => ({
   goalRecords: [],  // 完成目標的不可回退快照
   weeklyReviews: {},// {'week-start': {proud,adjust,next,updatedAt}}
   recurrences: [],  // 週期待辦範本
-  settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true}
+  settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true,
+    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null}
 });
+const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null});
 /* 舊版資料升級:保留既有紀錄,補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
   const tk = todayKey();
-  s.tasks = s.tasks.map((t, i) => Object.assign({area:null, focus:false, order:i, scheduledDate:t.bucket === 'today' ? tk : null, recurrenceId:null, occurrenceDate:null}, t));
+  s.tasks = s.tasks.map((t, i) => Object.assign({area:null, focus:false, note:'', order:i, scheduledDate:t.bucket === 'today' ? tk : null, recurrenceId:null, occurrenceDate:null}, t));
   s.habits = (s.habits || []).map(h => Object.assign({area:null, weeklyTarget:5, minVersion:''}, h));
   Object.keys(s.habitLog || {}).forEach(k => Object.keys(s.habitLog[k] || {}).forEach(id => {
     if (s.habitLog[k][id] === true) s.habitLog[k][id] = 'done';
@@ -748,11 +859,21 @@ function migrate(s){
   s.weeklyReviews=s.weeklyReviews||{};
   s.habitLog = s.habitLog || {}; s.reflections = s.reflections || {};
   s.recurrences = s.recurrences || [];
-  s.settings = Object.assign({lastOpenDay:tk,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true}, s.settings || {});
+  s.settings = Object.assign(SETTINGS_DEFAULTS(), s.settings || {});
   /* v7:習慣補上建立日(影響熱度圖分母),待辦補上未來排程日 */
   s.habits.forEach(h => { if (!h.createdAt) h.createdAt = 0; });
-  s.tasks.forEach(t => { if (t.dueDate === undefined) t.dueDate = null; });
-  s.v = 7;
+  s.tasks.forEach(t => { if (t.dueDate === undefined) t.dueDate = null; if (t.note === undefined) t.note = ''; });
+  /* v8:自訂生活領域。舊資料沒有這個欄位就給預設四個;有的話逐欄清洗,
+     顏色只收調色盤裡的代號,名稱長度設上限 —— 壞掉的備份檔進不來。 */
+  s.areas = (Array.isArray(s.areas) && s.areas.length ? s.areas : DEFAULT_AREAS)
+    .slice(0, AREA_MAX)
+    .map(a => ({
+      id: String((a && a.id) || uid()).slice(0, 40),
+      lb: (String((a && a.lb) || '領域').trim() || '領域').slice(0, 6),
+      p: PALETTE_KEYS.includes(a && a.p) ? a.p : 'slate'
+    }));
+  if (!Array.isArray(s.settings.todayHidden)) s.settings.todayHidden = [];
+  s.v = 8;
   return s;
 }
 const loadedState=store.load();
@@ -771,7 +892,7 @@ window.addEventListener('pagehide', () => store.save(state));
 /* =================== UI 狀態與路由 =================== */
 const ui = {
   tab:'today', hmOffset:0, hmSel:todayKey(), showDone:false, histLimit:14,
-  addArea:null, addBucket:'today', todoArea:'all', todoSort:'custom', todoDir:'asc',
+  addArea:null, addBucket:'today', todoArea:'all', todoSort:'custom', todoDir:'asc', layoutEdit:false, tlLimit:60,
   todoQuery:'', refQuery:'', refMood:'all', emojiGroup:'推薦', multi:false, selected:[],
   reviewScope:'week', habitTrend:false
 };
@@ -787,7 +908,7 @@ const TABS = [
   {id:'reflect', lb:'反思', ic:'reflect'},
   {id:'goal', lb:'目標', ic:'goal'}
 ];
-function go(tab){ ui.tab = tab; if (tab === 'habit') { ui.hmOffset = 0; ui.hmSel = todayKey(); } render(); window.scrollTo(0, 0); }
+function go(tab){ ui.tab = tab; if (tab !== 'today') ui.layoutEdit = false; if (tab === 'habit') { ui.hmOffset = 0; ui.hmSel = todayKey(); } render(); window.scrollTo(0, 0); }
 
 /* =================== 彈窗 / 確認 =================== */
 function openSheet(html, cls){
@@ -916,7 +1037,7 @@ function maybeCelebrate(wasAlreadyDone){
 
 /* 本週平衡:一律由真實紀錄計算(近 7 天完成的事 + 習慣打卡),不預設任何數字 */
 function areaBalance(){
-  const counts = {}; AREAS.forEach(a => counts[a.id] = 0);
+  const counts = {}; areaList().forEach(a => counts[a.id] = 0);
   const since = addDays(new Date(), -6); since.setHours(0, 0, 0, 0);
   const sinceT = since.getTime();
   state.tasks.forEach(t => { if (t.done && t.area && t.doneAt >= sinceT && counts[t.area] !== undefined) counts[t.area]++; });
@@ -924,7 +1045,7 @@ function areaBalance(){
     if (!h.area || counts[h.area] === undefined) return;
     for (let i = 0; i < 7; i++) if (isChecked(h.id, dkey(addDays(new Date(), -i)))) counts[h.area]++;
   });
-  const vals = AREAS.map(a => counts[a.id]);
+  const vals = areaList().map(a => counts[a.id]);
   return {counts, total: vals.reduce((x, y) => x + y, 0), max: Math.max(1, ...vals)};
 }
 function habitMonthCount(hid, y, m){
@@ -969,7 +1090,7 @@ function reorderTodayTask(taskId,targetId,group){
 function taskCompare(a, b){
   let n = 0;
   if (ui.todoSort === 'created') n = (a.createdAt || 0) - (b.createdAt || 0);
-  else if (ui.todoSort === 'area') { const rank=id=>{const i=AREAS.findIndex(x=>x.id===id);return i<0?99:i;}; n=rank(a.area)-rank(b.area); }
+  else if (ui.todoSort === 'area') { const rank=id=>{const i=areaList().findIndex(x=>x.id===id);return i<0?99:i;}; n=rank(a.area)-rank(b.area); }
   else n = (a.order ?? a.createdAt ?? 0) - (b.order ?? b.createdAt ?? 0);
   return ui.todoDir === 'desc' ? -n : n;
 }
@@ -977,7 +1098,7 @@ function taskMatches(t){
   const areaOK = ui.todoArea === 'all' || (ui.todoArea === 'none' ? !t.area : t.area === ui.todoArea);
   const q = ui.todoQuery.trim().toLocaleLowerCase('zh-Hant');
   const goal = t.goalId && goalById(t.goalId);
-  return areaOK && (!q || `${t.title} ${goal ? goal.title : ''}`.toLocaleLowerCase('zh-Hant').includes(q));
+  return areaOK && (!q || `${t.title} ${t.note || ''} ${goal ? goal.title : ''}`.toLocaleLowerCase('zh-Hant').includes(q));
 }
 function dayDiff(a, b){ return Math.round((fromKey(b) - fromKey(a)) / 864e5); }
 function monthDiff(a, b){ const x=fromKey(a), y=fromKey(b); return (y.getFullYear()-x.getFullYear())*12 + y.getMonth()-x.getMonth(); }
@@ -1016,7 +1137,7 @@ function ensureRecurringTasks(k){
 }
 function recurrenceLabel(r){
   const every = (r.interval || 1) > 1 ? `每 ${r.interval} ` : '每';
-  if (r.freq === 'daily') return `${every}${(r.interval || 1) > 1 ? '天' : '天'}`;
+  if (r.freq === 'daily') return `${every}天`;
   if (r.freq === 'weekdays') return (r.interval||1)>1?`每 ${r.interval} 週的週一至週五`:'每週一至週五';
   if (r.freq === 'weekly') return `${every}${(r.interval || 1) > 1 ? '週 · ' : '週 '}${(r.weekdays || []).map(n => WD[n]).join('、')}`;
   if(r.freq==='monthly')return `${every}${(r.interval || 1)>1?'月 · ':'月 '}${r.monthDay} 日`;
@@ -1100,12 +1221,8 @@ function render(){
   const main = $('#view');
   const st = window.scrollY;
   const views = { today: vToday, todo: vTodo, habit: vHabit, reflect: vReflect, goal: vGoal };
+  document.body.classList.toggle('layout-edit', !!ui.layoutEdit && ui.tab === 'today');
   main.innerHTML = views[ui.tab]();
-  if(ui.tab==='today'){
-    const h=new Date().getHours(),goals=$('#goalsCard'),focus=$('#focusCard'),reflection=$('#reflectionCard');
-    if(h>=11&&goals&&focus)goals.parentElement.insertBefore(focus,goals);
-    if(h>=18&&focus&&reflection)focus.insertAdjacentElement('afterend',reflection);
-  }
   $('#tabInner').innerHTML = TABS.map(t =>
     `<button class="tab ${ui.tab === t.id ? 'on' : ''}" data-act="tab" data-tab="${t.id}" aria-label="${t.lb}">${ICONS[t.ic]}<span>${t.lb}</span></button>`
   ).join('');
@@ -1117,12 +1234,13 @@ function render(){
 /* 領域一律「顏色 + 文字」成對出現,顏色從不單獨承擔辨識 */
 function areaTagHTML(id){
   const a = areaOf(id);
-  return a ? `<span class="t-tag"><i class="adot" style="background:${a.c}"></i>${a.lb}</span>` : '';
+  return a ? `<span class="t-tag"><i class="adot" style="background:${areaColor(a)}"></i>${esc(a.lb)}</span>` : '';
 }
 function tagsHTML(t, o){
   const tags = [];
   if (t.area) tags.push(areaTagHTML(t.area));
   if (t.recurrenceId) tags.push('<span class="t-tag repeat-badge">↻ 週期</span>');
+  if ((t.note || '').trim() && !(o && o.showNote)) tags.push('<span class="t-tag">📝 有備註</span>');
   if (t.dueDate && !t.done) tags.push(`<span class="t-tag due-badge">📅 ${dueLabel(t.dueDate)}</span>`);
   const g = t.goalId ? goalById(t.goalId) : null;
   if (g) tags.push(`<span class="t-tag goal">⚑ ${esc(g.title)}</span>`);
@@ -1137,6 +1255,7 @@ function taskItemHTML(t, opts){
     ${o.multi&&!t.done?'':`<button class="ck ${t.done ? 'on' : ''}" data-act="task-toggle" data-id="${t.id}" aria-label="${t.done?'取消完成':'完成'}:${esc(t.title)}" aria-pressed="${!!t.done}">${ICONS.check}</button>`}
     <div class="grow">
       <div class="tt">${esc(t.title)}</div>
+      ${o.showNote && (t.note || '').trim() ? `<div class="t-note">${esc(t.note.trim())}</div>` : ''}
       ${tagsHTML(t, o)}
     </div>
     ${o.focusBtn && !t.done ? `<button class="f-star ${t.focus ? '' : 'off'}" data-act="task-focus" data-id="${t.id}" aria-label="${t.focus ? '移出今日重點' : '列為今日重點'}">◆</button>` : ''}
@@ -1148,13 +1267,13 @@ function taskItemHTML(t, opts){
 function areaChipsHTML(){
   return `<div class="qa-areas">
     <button class="chip ${!ui.addArea ? 'on' : ''}" data-act="pick-area" data-a="">不分類</button>
-    ${AREAS.map(a => `<button class="chip ${ui.addArea === a.id ? 'on' : ''}" data-act="pick-area" data-a="${a.id}"><i class="adot" style="background:${a.c}"></i>${a.lb}</button>`).join('')}
+    ${areaList().map(a => `<button class="chip ${ui.addArea === a.id ? 'on' : ''}" data-act="pick-area" data-a="${esc(a.id)}"><i class="adot" style="background:${areaColor(a)}"></i>${esc(a.lb)}</button>`).join('')}
   </div>`;
 }
 function areaPickerHTML(cur, act, extra){
   return `<div class="seg">
     <button class="chip ${!cur ? 'on' : ''}" data-act="${act}" data-a="" ${extra || ''}>不分類</button>
-    ${AREAS.map(a => `<button class="chip ${cur === a.id ? 'on' : ''}" data-act="${act}" data-a="${a.id}" ${extra || ''}><i class="adot" style="background:${a.c}"></i>${a.lb}</button>`).join('')}
+    ${areaList().map(a => `<button class="chip ${cur === a.id ? 'on' : ''}" data-act="${act}" data-a="${esc(a.id)}" ${extra || ''}><i class="adot" style="background:${areaColor(a)}"></i>${esc(a.lb)}</button>`).join('')}
   </div>`;
 }
 function currentWeekKey(){return dkey(weekStart());}
@@ -1204,11 +1323,145 @@ function weeklyReviewHTML(){
   return `<div class="card" id="weeklyReviewCard"><div class="sec-title">人生回顧<span class="right">${label}</span></div>
     <div class="toolbar" style="margin-bottom:9px" aria-label="回顧範圍">
       ${[['week','本週'],['month','本月'],['year','今年']].map(([v,lb])=>`<button class="chip ${scope===v?'on':''}" data-act="review-scope" data-v="${v}">${lb}</button>`).join('')}
+      <button class="chip" data-act="timeline">🕰️ 時光軸</button>
     </div>
     <div class="review-grid"><div class="review-stat"><b>${s.completed}</b><span>完成的事情</span></div><div class="review-stat"><b>${s.focusDone}/${s.focusTotal||0}</b><span>完成的重點</span></div><div class="review-stat"><b>${s.habitDone}</b><span>習慣打卡</span></div><div class="review-stat"><b>${scope==='week'?s.goalProgress:s.goalsDone}</b><span>${scope==='week'?'推進的目標':'完成的目標'}</span></div><div class="review-stat"><b>${s.reflectDays}</b><span>寫下的日子</span></div><div class="review-stat"><b>${moodTxt}</b><span>平均心情</span></div></div>
     ${sun||r.opened||r.proud||r.adjust||r.next?`<div class="lbl" style="font-size:12.5px;color:var(--ink2);font-weight:600">這週最想肯定自己的事</div><textarea class="field" style="min-height:70px" data-input="week-review" data-key="proud" placeholder="哪怕只是一件小事…">${esc(r.proud||'')}</textarea>
     <div class="lbl" style="margin:10px 0 5px;font-size:12.5px;color:var(--ink2);font-weight:600">下週想調整什麼?</div><textarea class="field" style="min-height:70px" data-input="week-review" data-key="adjust" placeholder="少做一點、換個方式,都可以…">${esc(r.adjust||'')}</textarea>
     <div class="lbl" style="margin:10px 0 5px;font-size:12.5px;color:var(--ink2);font-weight:600">下週想守住的一件事</div><input class="field" data-input="week-review" data-key="next" value="${esc(r.next||'')}" placeholder="留給真正重要的方向">`:`<div class="hint" style="line-height:1.8">週日會在這裡邀請你回顧。現在也可以先看看這週走過的痕跡。</div><button class="btn ghost full sm" style="margin-top:10px" data-act="week-review-open">現在回顧</button>`}
+  </div>`;
+}
+
+/* =================== 人生時光軸 =================== */
+/* 不新增任何欄位,只是把已經存在的紀錄重新串成一條線:
+   立下與完成的目標、開始的習慣與累積的里程碑、寫作的連續紀錄、每週最想肯定自己的事。 */
+const HABIT_MILESTONES = [10, 30, 50, 100, 200, 365, 500, 1000];
+const WRITE_MILESTONES = [7, 30, 100, 365, 500, 1000];
+function timelineEvents(){
+  const ev = [];
+  const push = (t, ic, title, note) => { if (Number.isFinite(t) && t > 0) ev.push({t, ic, title, note:note || ''}); };
+
+  state.goalRecords.forEach(r => push(r.completedAt, '🏆', `完成目標:${r.title}`, r.why));
+  state.goals.forEach(g => push(g.createdAt, '⛰️', `立下目標:${g.title}`, g.why));
+  state.habits.forEach(h => push(h.createdAt, h.emoji || '🌱', `開始培養習慣:${h.name}`, h.minVersion ? `最低版本:${h.minVersion}` : ''));
+
+  /* 習慣累計次數的里程碑:照打卡日期先後數過去 */
+  const logDays = Object.keys(state.habitLog).sort();
+  state.habits.forEach(h => {
+    let n = 0;
+    logDays.forEach(k => {
+      if (!isChecked(h.id, k)) return;
+      n++;
+      if (HABIT_MILESTONES.includes(n)) push(fromKey(k).getTime(), '🎯', `「${h.name}」累計第 ${n} 次`, '');
+    });
+  });
+
+  /* 反思:第一篇,以及連續寫作的里程碑 */
+  const wrote = Object.keys(state.reflections)
+    .filter(k => { const r = state.reflections[k]; return r && (r.mood || (r.text || '').trim()); })
+    .sort();
+  if (wrote.length){
+    const first = state.reflections[wrote[0]];
+    push(fromKey(wrote[0]).getTime(), '✍️', '寫下第一篇反思', (first.text || '').split('\n')[0].slice(0, 60));
+  }
+  let run = 0, prev = null;
+  wrote.forEach(k => {
+    run = (prev && dayDiff(prev, k) === 1) ? run + 1 : 1;
+    prev = k;
+    if (WRITE_MILESTONES.includes(run)) push(fromKey(k).getTime(), '🌙', `連續寫下 ${run} 天`, '');
+  });
+
+  Object.keys(state.weeklyReviews).forEach(k => {
+    const r = state.weeklyReviews[k];
+    if (r && (r.proud || '').trim()) push(fromKey(k).getTime(), '💛', '那一週最想肯定自己的', r.proud);
+  });
+
+  return ev.sort((a, b) => b.t - a.t);
+}
+function timelineSheet(){
+  const all = timelineEvents();
+  const limit = ui.tlLimit || 60;
+  const list = all.slice(0, limit);
+  let lastHead = '';
+  const rows = list.map((e, i) => {
+    const d = new Date(e.t);
+    const head = `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+    const headHTML = head !== lastHead ? `<div class="tl-head">${head}</div>` : '';
+    lastHead = head;
+    return `${headHTML}<div class="tl-item">
+      <div class="tl-rail"><div class="tl-dot">${e.ic}</div>${i < list.length - 1 ? '<div class="tl-line"></div>' : ''}</div>
+      <div class="tl-body">
+        <div class="tl-date">${d.getMonth() + 1}月${d.getDate()}日 · 週${WD[d.getDay()]}</div>
+        <div class="tl-title">${esc(e.title)}</div>
+        ${e.note ? `<div class="tl-note">${esc(e.note)}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  openSheet(`<h2>人生時光軸</h2>
+    ${all.length ? `<div class="hint" style="margin-bottom:6px">走過的痕跡,共 ${all.length} 件。</div>
+    <div class="global-results" style="max-height:64dvh">${rows}
+      ${all.length > list.length ? `<button class="btn plain full sm" style="margin:10px 0 4px" data-act="tl-more">看更早的痕跡</button>` : '<div class="hint" style="text-align:center;padding:10px 0 4px">到這裡就是最初了。</div>'}
+    </div>`
+    : `<div class="empty"><div class="big">🕰️</div>還沒有足夠的痕跡<br><span class="hint">立下目標、養成習慣、寫下反思,這條線就會慢慢長出來。</span></div>`}`);
+}
+
+/* =================== 今日頁的版面 =================== */
+/* 今日頁的每個區塊都可以自己排順序、也可以收起來。
+   沒有自訂過的話,順序仍然跟著一天的節奏走(見 todayOrder)。 */
+const TODAY_BLOCKS = [
+  {id:'goals', lb:'我的目標'},
+  {id:'focus', lb:'今天最重要的三件事'},
+  {id:'others', lb:'其他待辦'},
+  {id:'upcoming', lb:'接下來的日子'},
+  {id:'habits', lb:'今天的習慣'},
+  {id:'balance', lb:'本週平衡'},
+  {id:'review', lb:'人生回顧'},
+  {id:'reflection', lb:'今晚的反思'}
+];
+const DEFAULT_TODAY_ORDER = TODAY_BLOCKS.map(b => b.id);
+const todayHidden = () => state.settings.todayHidden || [];
+function todayOrder(){
+  const saved = state.settings.todayLayout;
+  const custom = Array.isArray(saved) && saved.length > 0;
+  let order = [...new Set((custom ? saved : []).filter(id => DEFAULT_TODAY_ORDER.includes(id)))];
+  /* 之後版本新增的區塊會自動補在後面,不會因為舊版面設定就消失 */
+  DEFAULT_TODAY_ORDER.forEach(id => { if (!order.includes(id)) order.push(id); });
+  if (!custom && state.settings.todayAuto !== false && !ui.layoutEdit){
+    const h = new Date().getHours();
+    if (h >= 11) order = ['focus', ...order.filter(x => x !== 'focus')];
+    if (h >= 18){ order = order.filter(x => x !== 'reflection'); order.splice(order.indexOf('focus') + 1, 0, 'reflection'); }
+  }
+  return order;
+}
+function commitLayout(order){
+  state.settings.todayLayout = order;
+  state.settings.todayAuto = false;
+  save(); render();
+}
+function layoutTipHTML(){
+  if (!ui.layoutEdit) return '';
+  return `<div class="card pad-s lay-tip">
+    <div style="font-size:13.5px;color:var(--ink2);line-height:1.7">拖曳 ⠿ 或用 ▲▼ 排出屬於你的今天。隱藏只是把區塊收起來,裡面的紀錄都還在。</div>
+    <div class="sheet-actions" style="margin-top:11px">
+      <button class="btn plain" data-act="layout-reset">回到預設</button>
+      <button class="btn" data-act="layout-done">完成</button>
+    </div>
+  </div>`;
+}
+function layoutWrap(id, html){
+  const hidden = todayHidden().includes(id);
+  if (!ui.layoutEdit) return hidden ? '' : (html || '');
+  const b = TODAY_BLOCKS.find(x => x.id === id) || {lb:id};
+  const order = todayOrder(), i = order.indexOf(id);
+  return `<div class="lay-card ${hidden ? 'off' : ''}" data-lay="${id}">
+    <div class="lay-bar">
+      <button class="lay-drag" data-lay-drag="${id}" aria-label="拖移「${b.lb}」">⠿</button>
+      <span class="nm">${b.lb}</span>
+      <button data-act="lay-move" data-id="${id}" data-d="-1" ${i <= 0 ? 'disabled' : ''} aria-label="「${b.lb}」上移">▲</button>
+      <button data-act="lay-move" data-id="${id}" data-d="1" ${i >= order.length - 1 ? 'disabled' : ''} aria-label="「${b.lb}」下移">▼</button>
+      <button data-act="lay-toggle" data-id="${id}">${hidden ? '顯示' : '隱藏'}</button>
+    </div>
+    ${html || '<div class="card pad-s"><div class="hint">目前沒有內容,平常不會出現在畫面上。</div></div>'}
   </div>`;
 }
 
@@ -1234,7 +1487,7 @@ function vToday(){
   const meaningful=state.tasks.length+state.habits.length+state.goals.length+Object.keys(state.reflections).length;
   const lastBackup=state.settings.lastBackupAt?new Date(state.settings.lastBackupAt):null;
   const needsBackup=meaningful>=10&&(!lastBackup||Date.now()-lastBackup.getTime()>14*864e5);
-  const lowArea=bal.total>=3?[...AREAS].sort((a,b)=>bal.counts[a.id]-bal.counts[b.id])[0]:null;
+  const lowArea=bal.total>=3?[...areaList()].sort((a,b)=>bal.counts[a.id]-bal.counts[b.id])[0]:null;
   const upcoming=upcomingTasks();
 
   /* 我的目標:每個進行中目標的名稱+進度+下一步 */
@@ -1267,7 +1520,8 @@ function vToday(){
       </button>`}
   </div>`;
 
-  return `
+  const B = {};
+  const head = `
   <div class="card greet-card">
     <div class="tape"></div>
     <div class="greet-date">${d.getMonth()+1}月${d.getDate()}日 <span style="font-size:16px">週${WD[d.getDay()]}</span></div>
@@ -1288,11 +1542,11 @@ function vToday(){
       <button class="onboard-step ${focus.length?'done':''}" data-act="focus-first"><b>${focus.length?'✓':'2'}</b><span class="grow" style="text-align:left"><strong>選定今天的一件事</strong><span class="hint" style="display:block">把方向落在今天走得到的一步。</span></span></button>
       <button class="onboard-step ${hasRef?'done':''}" data-act="tab" data-tab="reflect"><b>${hasRef?'✓':'3'}</b><span class="grow" style="text-align:left"><strong>晚上留下一句話</strong><span class="hint" style="display:block">不是評分,只是看見今天。</span></span></button>
     </div>
-  </div>`:''}
+  </div>`:''}`;
 
-  ${goalsCard}
+  B.goals = goalsCard;
 
-  <div class="card today-drop-zone" id="focusCard" data-today-group="focus">
+  B.focus = `<div class="card today-drop-zone" id="focusCard" data-today-group="focus">
     <div class="sec-title">今天最重要的三件事
       <span class="right"><div class="ring" aria-label="今日重點完成 ${fDone} / ${FOCUS_MAX}">
         <svg viewBox="0 0 46 46" aria-hidden="true">
@@ -1319,9 +1573,9 @@ function vToday(){
       </div>
       ${areaChipsHTML()}
     </div>` : '<div class="hint" style="margin-top:10px">三件都排好了,專心完成它們就好。</div>'}
-  </div>
+  </div>`;
 
-  <div class="card today-drop-zone" data-today-group="other">
+  B.others = `<div class="card today-drop-zone" data-today-group="other">
     <div class="sec-title">其他待辦<button class="right" data-act="tab" data-tab="todo">全部 ›</button></div>
     ${otherOpen.length || otherDone.length
       ? otherOpen.sort((a,b)=>(a.order??0)-(b.order??0)).map(t => `<div data-today-wrap="1">${taskItemHTML(t, {focusBtn:true,draggable:true,touchDrag:true})}</div>`).join('') + (otherDone.length?`<button class="hint" data-act="tab" data-tab="todo" style="width:100%;text-align:left;padding:9px 2px 2px">今天另有 ${otherDone.length} 件已完成,已替你收好 ›</button>`:'')
@@ -1333,18 +1587,18 @@ function vToday(){
       </div>
       ${areaChipsHTML()}
     </div>
-  </div>
+  </div>`;
 
-  ${upcoming.length ? `<div class="card pad-s">
+  B.upcoming = upcoming.length ? `<div class="card pad-s">
     <div class="sec-title">接下來的日子<span class="right">${upcoming.length} 件已排定</span></div>
     ${upcoming.slice(0,4).map(t=>`<button class="result-item" data-act="task-edit" data-id="${t.id}">
       <span class="due-chip">${dueLabel(t.dueDate)}</span>
       <span class="grow"><strong style="font-size:14px;font-weight:550">${esc(t.title)}</strong></span><span>›</span>
     </button>`).join('')}
     ${upcoming.length>4?`<button class="hint" data-act="tab" data-tab="todo" style="width:100%;text-align:left;padding:8px 2px 0">另有 ${upcoming.length-4} 件排在更遠的日子 ›</button>`:''}
-  </div>`:''}
+  </div>` : '';
 
-  <div class="card">
+  B.habits = `<div class="card">
     <div class="sec-title">今天的習慣<button class="right" data-act="tab" data-tab="habit">詳細 ›</button></div>
     ${habits.length ? habits.map(h => {
       const wc = habitWeekCount(h.id), wt = h.weeklyTarget || 5;
@@ -1359,25 +1613,25 @@ function vToday(){
     }).join('')
       : `<div class="hint" style="margin-bottom:9px">想養成什麼習慣?點一下加入:</div>
          <div class="seg">${SUGGEST_HABITS.map(s => `<button class="chip" data-act="habit-suggest" data-e="${s.e}" data-n="${s.n}" data-a="${s.a}">${s.e} ${s.n}</button>`).join('')}</div>`}
-  </div>
+  </div>`;
 
-  ${meaningful>=3?`<div class="card">
+  B.balance = meaningful>=3?`<div class="card">
     <div class="sec-title">本週平衡</div>
     ${bal.total >= 3
-      ? AREAS.map(a => `<div class="bal-row">
-          <span class="bal-lb">${a.lb}</span>
-          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${a.c}"></i></span>
+      ? areaList().map(a => `<div class="bal-row">
+          <span class="bal-lb">${esc(a.lb)}</span>
+          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${areaColor(a)}"></i></span>
           <span class="bal-v">${bal.counts[a.id]}</span>
         </div>`).join('') + `<div class="bal-note">近 7 天完成的事與習慣打卡。平衡不是平均,而是符合你此刻的選擇。</div>
         ${lowArea?`<div class="nudge">「${lowArea.lb}」最近比較安靜。若你也在意,可以替它留一件很小的事。<button data-act="balance-open" data-a="${lowArea.id}">看看 ›</button></div>`:''}`
       : '<div class="hint" style="padding:2px 2px 4px">完成幾件標了領域的事之後,這裡會看見你這週把時間放在哪。</div>'}
-  </div>`:''}
+  </div>`:'';
 
-  ${meaningful>=3?weeklyReviewHTML():''}
+  B.review = meaningful>=3?weeklyReviewHTML():'';
 
-  ${needsBackup?`<div class="card pad-s"><div class="row"><span style="font-size:22px">☁️</span><span class="grow" style="font-size:13.5px;color:var(--ink2)">紀錄已累積一段時間。花一分鐘備份,會更安心。</span><button class="s-today" data-act="settings">去備份</button></div></div>`:''}
+  const backupNudge = needsBackup?`<div class="card pad-s"><div class="row"><span style="font-size:22px">☁️</span><span class="grow" style="font-size:13.5px;color:var(--ink2)">紀錄已累積一段時間。花一分鐘備份,會更安心。</span><button class="s-today" data-act="settings">去備份</button></div></div>`:'';
 
-  <div class="card pad-s" id="reflectionCard">
+  B.reflection = `<div class="card pad-s" id="reflectionCard">
     <div class="sec-title">${phase==='夜晚'?'現在,替今天收尾':'今晚的反思'}<span class="right">${rStreak > 0 ? `已連續 ${rStreak} 天` : ''}</span></div>
     ${phase==='夜晚'&&focus.length?`<div class="hint" style="margin:-2px 0 9px">今天的三件重點完成 ${fDone}/${focus.length};沒完成的,明天可以重新安排。</div>`:''}
     ${hasRef
@@ -1392,6 +1646,8 @@ function vToday(){
            <span style="color:var(--acc);font-size:13px;font-weight:600">開始 ›</span>
          </button>`}
   </div>`;
+
+  return head + layoutTipHTML() + todayOrder().map(id => layoutWrap(id, B[id])).join('') + backupNudge;
 }
 
 /* =================== 待辦頁 =================== */
@@ -1429,7 +1685,7 @@ function vTodo(){
   <div class="card pad-s">
     <div class="search-wrap"><input class="field" id="todoSearch" value="${esc(ui.todoQuery)}" placeholder="搜尋待辦或目標…" data-input="todo-search" aria-label="搜尋待辦"></div>
     <div class="toolbar" style="margin-top:10px" aria-label="生活領域篩選">
-      ${[{id:'all',lb:'全部'},...AREAS,{id:'none',lb:'未分類'}].map(a => `<button class="chip ${ui.todoArea===a.id?'on':''}" data-act="todo-filter" data-a="${a.id}">${a.lb}<span class="filter-count">${areaCount(a.id)}</span></button>`).join('')}
+      ${[{id:'all',lb:'全部'},...areaList(),{id:'none',lb:'未分類'}].map(a => `<button class="chip ${ui.todoArea===a.id?'on':''}" data-act="todo-filter" data-a="${esc(a.id)}">${esc(a.lb)}<span class="filter-count">${areaCount(a.id)}</span></button>`).join('')}
     </div>
     <div class="row" style="margin-top:7px">
       <span class="hint grow">${open.length === allOpen.length ? '顯示全部待辦' : `目前顯示 ${open.length} 件`}</span>
@@ -1446,7 +1702,7 @@ function vTodo(){
     const list = open.filter(t => t.bucket === b.id).sort(taskCompare);
     return `<div class="card drop-zone" data-bucket="${b.id}">
       <div class="sec-title">${b.lb}<span class="right">${list.length} 件${b.id === 'today' && focusTasks().length ? ` · 重點 ${focusTasks().length}/${FOCUS_MAX}` : ''}</span></div>
-      ${list.length ? list.map(t => taskItemHTML(t, {moveQuick:!ui.multi,draggable:!ui.multi&&ui.todoSort==='custom',multi:ui.multi,focusBtn:!ui.multi&&b.id==='today'})).join('') : `<div class="hint" style="padding:4px 2px 6px">${b.hint}</div>`}
+      ${list.length ? list.map(t => taskItemHTML(t, {moveQuick:!ui.multi,draggable:!ui.multi&&ui.todoSort==='custom',multi:ui.multi,focusBtn:!ui.multi&&b.id==='today',showNote:true})).join('') : `<div class="hint" style="padding:4px 2px 6px">${b.hint}</div>`}
     </div>`;
   }).join('')}
 
@@ -1518,7 +1774,6 @@ function vHabit(){
   const habits = activeHabits();
   const tk = todayKey();
   const selKey = ui.hmSel;
-  const selDay = state.habitLog[selKey] || {};
   const last7 = [...Array(7)].map((_, i) => addDays(new Date(), i - 6));
   const weekReview=new Date().getDay()===0;
 
@@ -1533,7 +1788,6 @@ function vHabit(){
   ${habits.length ? `<div class="card">
     <div class="sec-title">本月紀錄<span class="right">點日期可補打卡</span></div>
     ${heatmapHTML()}
-    ${selKey !== tk || Object.keys(selDay).length || true ? `
       <hr class="divider">
       <div style="font-size:13px;color:var(--ink2);margin-bottom:7px">📌 ${fmtFull(selKey)}${selKey === tk ? '(今天)' : ''}</div>
       ${habits.map(h => `
@@ -1542,7 +1796,7 @@ function vHabit(){
           <span class="grow" style="font-size:14.5px">${esc(h.name)}</span>
           <button class="chip ${isRest(h.id,selKey)?'on':''}" style="padding:5px 8px;font-size:11.5px" data-act="habit-rest" data-id="${h.id}" data-k="${selKey}" aria-label="${esc(h.name)} 今天休息">休息</button>
           <button class="ck ${isChecked(h.id, selKey) ? 'on' : ''}" data-act="habit-day" data-id="${h.id}" data-k="${selKey}" aria-label="打卡">${ICONS.check}</button>
-        </div>`).join('')}` : ''}
+        </div>`).join('')}
   </div>` : ''}
 
   ${habits.length ? habits.map(h => {
@@ -1753,7 +2007,7 @@ function vGoal(){
 
   ${paused.length ? `<div class="sec-title" style="margin:20px 2px 10px">暫時放下<span class="right">${paused.length} 個</span></div>` + paused.map(g=>goalCardHTML(g)).join('') : ''}
 
-  ${records.length ? `<div class="sec-title" style="margin:20px 2px 10px">🏆 完成人生紀錄 <span class="right">${records.length} 筆</span></div>` + records.map(goalRecordHTML).join('') : ''}`;
+  ${records.length ? `<div class="sec-title" style="margin:20px 2px 10px">🏆 完成人生紀錄 <button class="right" data-act="timeline">時光軸 ›</button></div>` + records.map(goalRecordHTML).join('') : ''}`;
 }
 function goalRecordHTML(r){
   const a=areaOf(r.area),d=new Date(r.completedAt||Date.now());
@@ -1851,11 +2105,19 @@ function moveTaskSheet(t){
 }
 
 /* =================== 任務編輯彈窗 =================== */
+/* 彈窗裡換領域、改安排都會重開彈窗,先把已經打好的字收起來,免得白打一次 */
+function stashTaskSheet(t){
+  if (!t) return;
+  const ti = $('#tTitle'); if (ti && ti.value.trim()) t.title = ti.value.trim();
+  const no = $('#tNote'); if (no) t.note = no.value;
+}
 function taskSheet(t){
   const g = t.goalId ? goalById(t.goalId) : null;
   openSheet(`
     <h2>編輯待辦</h2>
     <input class="field" id="tTitle" value="${esc(t.title)}" maxlength="60">
+    <div class="lbl">備註(可留白)</div>
+    <textarea class="field" id="tNote" style="min-height:84px" placeholder="細節、電話、連結,或是你當時在想的事…" maxlength="2000">${esc(t.note || '')}</textarea>
     ${g ? `<div class="hint" style="margin-top:8px">⚑ 來自目標「${esc(g.title)}」,完成時會自動推進目標。</div>` : ''}
     ${t.recurrenceId?`<div class="nudge">這是週期待辦的一次安排。修改標題只影響這一次。<button data-act="repeat-edit" data-id="${t.recurrenceId}">修改未來週期 ›</button></div>`:''}
     ${t.done ? '<div class="hint" style="margin-top:8px">已完成。</div>' : ''}
@@ -1895,6 +2157,40 @@ function settingsSheet(){
     <h2>設定與備份</h2>
     <div class="hint" style="margin-bottom:4px">目前資料:${counts}${sizeLabel}</div>
     <div class="hint">所有資料只存在<b>這台裝置</b>上,不會上傳,也沒有任何追蹤。清除瀏覽器資料、更換裝置或移除網站資料時可能遺失,建議偶爾備份。</div>
+    <div class="lbl">資料保護</div>
+    <div class="hint">${!persistState.supported
+      ? '這個瀏覽器沒有提供長期保存設定,請記得定期備份。'
+      : persistState.granted
+        ? '✅ 瀏覽器已答應<b>長期保留</b>這本手帳,不會因為空間整理而被清掉。'
+        : '⚠️ 目前資料被視為<b>可清除的暫存</b>。空間不足或長期沒開啟時可能消失。'}</div>
+    ${persistState.supported && !persistState.granted ? `<button class="btn ghost full sm" style="margin-top:8px" data-act="persist-ask">開啟長期保存</button>
+    <div class="hint" style="margin-top:6px">若沒有成功,把手帳<b>加入主畫面</b>後再試一次,通過機率會高很多。</div>` : ''}
+    <div class="lbl">生活領域</div>
+    <div class="row"><span class="grow hint">${areaList().map(a => esc(a.lb)).join('、')}</span><button class="chip" data-act="area-manage">管理 ›</button></div>
+    <div class="lbl">今日版面</div>
+    <div class="hint" style="margin-bottom:7px">${Array.isArray(state.settings.todayLayout) && state.settings.todayLayout.length
+      ? `已自訂順序${todayHidden().length ? `,並收起 ${todayHidden().length} 個區塊` : ''}。`
+      : '目前依時段自動調整:中午把重點提前,入夜把反思接上。'}</div>
+    <button class="btn ghost full sm" data-act="layout-edit">編輯今日版面</button>
+    ${!(Array.isArray(state.settings.todayLayout) && state.settings.todayLayout.length) ? `<div class="seg" style="margin-top:9px">
+      <button class="chip ${state.settings.todayAuto !== false ? 'on' : ''}" data-act="today-auto" data-v="1">依時段自動</button>
+      <button class="chip ${state.settings.todayAuto === false ? 'on' : ''}" data-act="today-auto" data-v="0">固定順序</button>
+    </div>` : ''}
+    <div class="lbl">手帳鎖</div>
+    <div class="hint" style="margin-bottom:7px">${lockOn()
+      ? '🔒 已上鎖。這道鎖擋得住臨時拿走手機的人,但它<b>不會加密</b>你的內容,懂技術的人仍有辦法讀到。'
+      : '反思是這本手帳最私密的部分。可以設一組四位數密碼,離開一段時間後自動上鎖。'}</div>
+    ${lockOn() ? `<div class="seg">${[[0,'立刻上鎖'],[60,'1 分鐘後'],[300,'5 分鐘後']].map(([v,lb]) => `<button class="chip ${Number(lockCfg().delay) === v ? 'on' : ''}" data-act="lock-delay" data-v="${v}">${lb}</button>`).join('')}</div>
+      <button class="btn plain full sm" style="margin-top:9px" data-act="lock-off">關閉手帳鎖</button>`
+      : '<button class="btn ghost full sm" data-act="lock-on">設定四位數密碼</button>'}
+    <div class="lbl">每晚提醒</div>
+    <div class="hint" style="margin-bottom:7px">時間到了,如果今天還沒寫下任何一句話,才會提醒你 —— 寫過了就不打擾。</div>
+    <div class="row">
+      <input class="field grow" type="time" id="remTime" value="${esc(reminderCfg().time || '21:30')}" aria-label="提醒時間">
+      <button class="btn ghost" data-act="reminder-on">${reminderCfg().enabled ? '更新' : '開啟'}</button>
+    </div>
+    ${reminderCfg().enabled ? '<button class="btn plain full sm" style="margin-top:9px" data-act="reminder-off">關閉提醒</button>' : ''}
+    <div class="hint" style="margin-top:7px">📱 iPhone 需先「加入主畫面」才收得到通知,而且系統不允許網頁在背景排程 —— 手帳沒開著時可能不會準時響。想要更可靠,可以用內建的「捷徑」App 設一個每晚自動打開手帳的自動化。</div>
     <div class="lbl">文字大小</div><div class="seg"><button class="chip ${state.settings.textSize!=='large'?'on':''}" data-act="text-size" data-v="normal">標準</button><button class="chip ${state.settings.textSize==='large'?'on':''}" data-act="text-size" data-v="large">放大</button></div>
     <div class="lbl">觸覺與動態</div><div class="seg"><button class="chip ${state.settings.haptics!==false?'on':''}" data-act="haptics" data-v="1">完成時輕震</button><button class="chip ${state.settings.haptics===false?'on':''}" data-act="haptics" data-v="0">安靜</button></div>
     <div class="lbl">備份(給程式讀的完整檔)</div>
@@ -1920,8 +2216,35 @@ function settingsSheet(){
       🌙 建議每晚睡前:勾掉今天完成的事 → 習慣打卡 → 寫一句反思。
     </div>
     <button class="btn plain full sm" style="margin-top:10px" data-act="shortcuts">電腦版鍵盤快捷鍵</button>
+    <div class="lbl">關於</div>
+    <div class="hint" style="line-height:1.95">
+      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作。<br>
+      版本 v${state.v} · 沒有帳號、沒有伺服器、沒有追蹤,所有紀錄都留在你自己的裝置裡。
+    </div>
     <hr class="divider">
     <button class="danger-link" style="padding-top:2px" data-act="wipe">清除全部資料</button>`);
+}
+/* 生活領域管理:改名、換色、增刪。顏色只在調色盤裡選,才能同時顧到深色模式與色盲辨識。 */
+function areaManagerSheet(openPalette){
+  const list = areaList();
+  openSheet(`<h2>生活領域</h2>
+    <div class="hint" style="line-height:1.75">領域讓你看見時間放在哪裡。改成貼近你人生的名字 —— 課業、副業、伴侶、爸媽,都可以。最多 ${AREA_MAX} 個。</div>
+    <div style="margin-top:8px">
+    ${list.map(a => {
+      const used = areaUsage(a.id);
+      return `<div class="area-row">
+        <button class="swatch" style="background:${areaColor(a)}" data-act="area-palette" data-id="${esc(a.id)}" aria-label="更換「${esc(a.lb)}」的顏色"></button>
+        <input class="field grow" value="${esc(a.lb)}" data-input="area-name" data-id="${esc(a.id)}" maxlength="6" aria-label="領域名稱" enterkeyhint="done">
+        <button class="move-btn" data-act="area-up" data-id="${esc(a.id)}" aria-label="「${esc(a.lb)}」上移">▲</button>
+        <button class="move-btn" data-act="area-del" data-id="${esc(a.id)}" aria-label="刪除「${esc(a.lb)}」" style="color:var(--m1)">✕</button>
+      </div>
+      ${openPalette === a.id ? `<div class="pal">${PALETTE_KEYS.map(p => `<button class="${a.p === p ? 'on' : ''}" style="background:${AREA_PALETTE[p]}" data-act="area-color" data-id="${esc(a.id)}" data-p="${p}" aria-label="換成這個顏色"></button>`).join('')}</div>` : ''}
+      <div class="area-use">${used ? `目前有 ${used} 件事屬於這裡` : '還沒有東西用到它'}</div>`;
+    }).join('')}
+    </div>
+    ${list.length < AREA_MAX ? '<button class="btn ghost full sm" data-act="area-add">＋ 新增領域</button>' : `<div class="hint">已經到上限 ${AREA_MAX} 個了。</div>`}
+    <button class="btn plain full sm" style="margin-top:9px" data-act="area-reset">回到預設的四個</button>
+    <div class="sheet-actions"><button class="btn full" data-act="sheet-close">完成</button></div>`);
 }
 function exportJSON(){ return JSON.stringify({app:'人生手帳', v:state.v, exportedAt:new Date().toISOString(), data:state}); }
 /* 可讀版匯出:備份檔是給程式看的,這份是給你自己看的 —— 換手機、換 App、印出來都帶得走 */
@@ -1971,7 +2294,11 @@ function exportMarkdown(){
       const list = open.filter(t=>t.bucket===b);
       if (!list.length) return;
       L.push(`### ${lb}`, ``);
-      list.forEach(t=>{ const a=areaOf(t.area); L.push(`- [ ] ${t.focus?'◆ ':''}${t.title}${a?`　·　${a.lb}`:''}`); });
+      list.forEach(t=>{
+        const a=areaOf(t.area);
+        L.push(`- [ ] ${t.focus?'◆ ':''}${t.title}${a?`　·　${a.lb}`:''}`);
+        if ((t.note||'').trim()) t.note.trim().split('\n').forEach(ln => L.push(`  - ${ln}`));
+      });
       L.push(``);
     });
   }
@@ -2036,6 +2363,148 @@ function doImport(text){
   }catch(e){ toast('這不是有效的備份內容'); }
 }
 
+/* =================== 手帳鎖 =================== */
+/* 誠實說在前面:這道鎖擋得住臨時拿走手機的人,擋不住懂技術的人。
+   它不加密內容 —— 加密一旦忘記密碼就真的救不回來,對一本要陪很久的手帳來說代價太大。 */
+const lockRT = {open:true, pin:'', mode:null, first:'', hiddenAt:0, wipeArmed:false};
+async function hashPin(salt, pin){
+  const raw = `${salt}|${pin}`;
+  try{
+    if (typeof crypto !== 'undefined' && crypto.subtle){
+      const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(raw));
+      return 's:' + [...new Uint8Array(buf)].map(x => x.toString(16).padStart(2, '0')).join('');
+    }
+  }catch(e){}
+  return 'f:' + hashText(raw);   /* file:// 之類的非安全環境沒有 WebCrypto,退回較弱的雜湊 */
+}
+const lockCfg = () => state.settings.lock || null;
+const lockOn = () => { const c = lockCfg(); return !!(c && c.hash); };
+function openLockUI(mode){
+  lockRT.open = false; lockRT.pin = ''; lockRT.mode = mode; lockRT.first = ''; lockRT.wipeArmed = false;
+  closeSheet();
+  let el = document.getElementById('lockScreen');
+  if (!el){
+    el = document.createElement('div');
+    el.id = 'lockScreen';
+    el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-label', '手帳已上鎖');
+    el.tabIndex = -1;
+    document.body.appendChild(el);
+  }
+  document.body.classList.add('locked');
+  /* 鎖上時把底下整片標成 inert:Tab 不會跑進模糊的內容裡,螢幕閱讀器也讀不到 */
+  ['app', 'tabbar', 'storageBanner', 'sheetRoot'].forEach(id => {
+    const n = document.getElementById(id); if (n) n.inert = true;
+  });
+  drawLock();
+}
+function closeLockUI(){
+  const el = document.getElementById('lockScreen'); if (el) el.remove();
+  document.body.classList.remove('locked');
+  ['app', 'tabbar', 'storageBanner', 'sheetRoot'].forEach(id => {
+    const n = document.getElementById(id); if (n) n.inert = false;
+  });
+  lockRT.open = true; lockRT.pin = ''; lockRT.mode = null; lockRT.first = ''; lockRT.wipeArmed = false;
+}
+function lockNow(){ if (lockOn() && lockRT.open) openLockUI('verify'); }
+function shakeLock(){
+  const el = document.getElementById('lockScreen'); if (!el) return;
+  el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); buzz([12, 50, 12]);
+}
+function drawLock(msg){
+  const el = document.getElementById('lockScreen'); if (!el) return;
+  const m = lockRT.mode;
+  if (m === 'forgot'){
+    el.innerHTML = `<div style="font-size:34px">🗝️</div>
+      <div class="lk-title">忘記密碼</div>
+      <div class="lk-hint">因為手帳沒有把內容加密,也沒有任何伺服器保管密碼,所以沒有其他人能替你解開。<br><br>如果你之前下載過備份檔,可以清除後再匯入,紀錄會完整回來。</div>
+      <button class="btn ghost" data-act="pin-back">回去再想一下</button>
+      <button class="danger-link" data-act="pin-wipe" style="max-width:280px">${lockRT.wipeArmed ? '再按一次,確定清除全部資料' : '清除全部資料,重新開始'}</button>`;
+    return;
+  }
+  const setting = m === 'set' || m === 'confirm';
+  const title = m === 'set' ? '設定四位數密碼' : m === 'confirm' ? '再輸入一次' : m === 'off' ? '輸入密碼以關閉' : '這本手帳上了鎖';
+  const hint = msg || (m === 'set' ? '記住它 —— 忘記的話只能靠備份檔重新開始。'
+    : m === 'confirm' ? '確認一次,避免手滑。'
+    : '輸入四位數密碼,回到你的手帳。');
+  el.innerHTML = `<div style="font-size:34px">📖</div>
+    <div class="lk-title">${title}</div>
+    <div class="lk-hint">${esc(hint)}</div>
+    <div class="pin-dots" role="status" aria-label="已輸入 ${lockRT.pin.length} 位">${[0,1,2,3].map(i => `<i class="${i < lockRT.pin.length ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="pin-pad">
+      ${[1,2,3,4,5,6,7,8,9].map(n => `<button data-act="pin-key" data-k="${n}">${n}</button>`).join('')}
+      <button class="fn" data-act="pin-key" data-k="clear">清除</button>
+      <button data-act="pin-key" data-k="0">0</button>
+      <button class="fn" data-act="pin-key" data-k="back" aria-label="刪除一位">⌫</button>
+    </div>
+    ${setting || m === 'off' ? '<button class="btn plain sm" data-act="pin-cancel">取消</button>'
+      : '<button class="btn plain sm" data-act="pin-forgot">忘記密碼?</button>'}`;
+  el.focus({preventScroll:true});   /* 每次重畫都把焦點留在鎖裡 */
+}
+async function pinEntered(){
+  const pin = lockRT.pin, m = lockRT.mode;
+  if (m === 'set'){ lockRT.first = pin; lockRT.pin = ''; lockRT.mode = 'confirm'; drawLock(); return; }
+  if (m === 'confirm'){
+    if (pin !== lockRT.first){ lockRT.pin = ''; lockRT.first = ''; lockRT.mode = 'set'; shakeLock(); drawLock('兩次不一樣,再設定一次'); return; }
+    const salt = uid();
+    const delay = (lockCfg() && lockCfg().delay);
+    state.settings.lock = {salt, hash: await hashPin(salt, pin), delay: delay === undefined || delay === null ? 60 : delay};
+    save(); closeLockUI(); toast('已開啟手帳鎖 🔒'); settingsSheet(); return;
+  }
+  const c = lockCfg();
+  const ok = c && (await hashPin(c.salt, pin)) === c.hash;
+  if (!ok){ lockRT.pin = ''; shakeLock(); drawLock('密碼不對,再試一次'); return; }
+  if (m === 'off'){ state.settings.lock = null; save(); closeLockUI(); toast('已關閉手帳鎖'); settingsSheet(); return; }
+  closeLockUI();
+}
+
+/* =================== 每晚提醒 =================== */
+/* 沒有伺服器,就用瀏覽器手上有的辦法:手帳開著時自己提醒;Android / 桌面 Chrome 再交給
+   背景定期同步。iPhone 目前沒有背景排程,設定頁會誠實說明,並建議用「捷徑」App 補上。 */
+const REMIND_TAG = 'life-journal-nightly';
+const reminderCfg = () => state.settings.reminder || {enabled:false, time:'21:30', lastFired:null};
+let remindT = null;
+function wroteToday(){ const r = state.reflections[todayKey()]; return !!(r && (r.mood || (r.text || '').trim())); }
+function scheduleReminder(){
+  clearTimeout(remindT);
+  const c = reminderCfg();
+  if (!c.enabled) return;
+  const [hh, mm] = String(c.time || '21:30').split(':').map(Number);
+  const at = new Date(); at.setHours(hh || 0, mm || 0, 0, 0);
+  if (at.getTime() <= Date.now()) at.setTime(at.getTime() + 864e5);
+  remindT = setTimeout(() => { fireReminder(); scheduleReminder(); }, Math.max(1000, at.getTime() - Date.now()));
+}
+function fireReminder(){
+  const c = reminderCfg();
+  if (!c.enabled || wroteToday() || c.lastFired === todayKey()) return;   /* 已經寫過就不打擾 */
+  c.lastFired = todayKey(); state.settings.reminder = c; save();
+  const body = '替今天寫下一句話,只要一分鐘。';
+  try{
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && navigator.serviceWorker){
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification('人生手帳', {body, tag:REMIND_TAG, icon:APP_ICON, data:{url:'./?tab=reflect'}}))
+        .catch(()=>{});
+    }
+  }catch(e){}
+  if (document.visibilityState === 'visible') toast('🌙 ' + body);
+}
+async function enableReminder(time){
+  if (typeof Notification === 'undefined'){ toast('這個瀏覽器不支援通知'); return false; }
+  let perm = Notification.permission;
+  if (perm === 'default'){ try{ perm = await Notification.requestPermission(); }catch(e){ perm = 'denied'; } }
+  if (perm !== 'granted'){ toast('沒有取得通知權限,可到瀏覽器設定裡開啟'); return false; }
+  state.settings.reminder = {enabled:true, time:time || '21:30', lastFired:null};
+  save(); scheduleReminder();
+  /* 有 Service Worker 的完整部署才試背景排程;沒有的話就只靠開著的分頁 */
+  if (navigator.serviceWorker && navigator.serviceWorker.controller){
+    navigator.serviceWorker.ready.then(async reg => {
+      if (!reg.periodicSync || !navigator.permissions) return;
+      const st = await navigator.permissions.query({name:'periodic-background-sync'});
+      if (st.state === 'granted') await reg.periodicSync.register('nightly-nudge', {minInterval:12 * 60 * 60 * 1000});
+    }).catch(()=>{});
+  }
+  return true;
+}
+
 /* =================== 事件處理 =================== */
 const actions = {
   'tab': d => go(d.tab),
@@ -2093,12 +2562,13 @@ const actions = {
   },
   'task-area': d => {
     const t = taskById(d.id); if (!t) return;
-    const cur = $('#tTitle'); if (cur && cur.value.trim()) t.title = cur.value.trim();
+    stashTaskSheet(t);
     t.area = d.a || null; save(); taskSheet(t); renderSoon();
   },
   'task-focus': d => {
     const t = taskById(d.id); if (!t) return;
     if (!t.focus && !canAddFocus()) { toast(`今日重點最多 ${FOCUS_MAX} 件,先完成或移出一件`); return; }
+    if (d.sheet) stashTaskSheet(t);
     t.focus = !t.focus;
     if (t.focus) { t.bucket = 'today'; t.scheduledDate=todayKey(); }
     save();
@@ -2115,13 +2585,14 @@ const actions = {
   'task-edit': d => { const t = taskById(d.id); if (t) taskSheet(t); },
   'task-move': d => {
     const t = taskById(d.id); if (!t) return;
-    const cur = $('#tTitle'); if (cur && cur.value.trim()) t.title = cur.value.trim();
+    stashTaskSheet(t);
     t.bucket=d.b; t.focus=t.focus&&d.b==='today'; t.scheduledDate=d.b==='today'?todayKey():null; t.order=nextTaskOrder(d.b); save(); taskSheet(t);
   },
   'task-save': d => {
     const t = taskById(d.id); if (!t) return;
     const v = ($('#tTitle').value || '').trim();
     if (v) t.title = v;
+    if ($('#tNote')) t.note = ($('#tNote').value || '').trim();
     const due = ($('#tDue') && $('#tDue').value) || '';
     if (due && due > todayKey()){
       t.dueDate = due;
@@ -2132,7 +2603,7 @@ const actions = {
     } else t.dueDate = null;
     save(); closeSheet(); render();
   },
-  'task-due-clear': d => { const t = taskById(d.id); if(!t) return; t.dueDate = null; save(); taskSheet(t); renderSoon(); },
+  'task-due-clear': d => { const t = taskById(d.id); if(!t) return; stashTaskSheet(t); t.dueDate = null; save(); taskSheet(t); renderSoon(); },
   'task-del': d => {
     const t = taskById(d.id); if (!t) return;
     const skipped=!!t.recurrenceId;
@@ -2316,6 +2787,114 @@ const actions = {
     catch(e){ toast('這個環境無法下載檔案'); }
   },
   'haptics': d => { state.settings.haptics = d.v === '1'; save(); if(d.v==='1') buzz(12); settingsSheet(); },
+  /* 生活領域 */
+  'area-manage': () => areaManagerSheet(null),
+  'area-palette': d => areaManagerSheet(d.id),
+  'area-color': d => {
+    const a = areaList().find(x => x.id === d.id);
+    if (a && PALETTE_KEYS.includes(d.p)){ a.p = d.p; save(); renderSoon(); }
+    areaManagerSheet(null);
+  },
+  'area-up': d => {
+    const list = state.areas, i = list.findIndex(x => x.id === d.id);
+    if (i <= 0) return;
+    list.splice(i - 1, 0, list.splice(i, 1)[0]);
+    save(); renderSoon(); areaManagerSheet(null);
+  },
+  'area-add': () => {
+    if (state.areas.length >= AREA_MAX) return;
+    const used = state.areas.map(a => a.p);
+    const p = PALETTE_KEYS.find(k => !used.includes(k)) || 'slate';
+    state.areas.push({id:uid(), lb:'新領域', p});
+    save(); renderSoon(); areaManagerSheet(null);
+  },
+  'area-del': d => {
+    if (state.areas.length <= 1){ toast('至少要留下一個領域'); return; }
+    const a = areaList().find(x => x.id === d.id); if (!a) return;
+    const used = areaUsage(d.id);
+    const go = () => {
+      state.areas = state.areas.filter(x => x.id !== d.id);
+      state.tasks.forEach(t => { if (t.area === d.id) t.area = null; });
+      state.habits.forEach(h => { if (h.area === d.id) h.area = null; });
+      state.goals.forEach(g => { if (g.area === d.id) g.area = null; });
+      (state.recurrences || []).forEach(r => { if (r.area === d.id) r.area = null; });
+      if (ui.todoArea === d.id) ui.todoArea = 'all';
+      save(); render(); areaManagerSheet(null); toast(`已刪除「${a.lb}」`);
+    };
+    if (used) confirmSheet(`刪除「${a.lb}」?`, `有 ${used} 件事屬於這個領域,它們會變成<b>未分類</b>,內容不會刪除。`, '刪除', go, true);
+    else go();
+  },
+  'area-reset': () => confirmSheet('回到預設的四個領域?', '自訂的名稱與顏色會消失;原本標在自訂領域上的事會變成未分類。', '回到預設', () => {
+    const keep = DEFAULT_AREAS.map(a => a.id);
+    state.tasks.forEach(t => { if (t.area && !keep.includes(t.area)) t.area = null; });
+    state.habits.forEach(h => { if (h.area && !keep.includes(h.area)) h.area = null; });
+    state.goals.forEach(g => { if (g.area && !keep.includes(g.area)) g.area = null; });
+    (state.recurrences || []).forEach(r => { if (r.area && !keep.includes(r.area)) r.area = null; });
+    state.areas = DEFAULT_AREAS.map(a => Object.assign({}, a));
+    ui.todoArea = 'all';
+    save(); render(); areaManagerSheet(null); toast('已回到預設四個領域');
+  }),
+
+  /* 今日版面 */
+  'layout-edit': () => { ui.layoutEdit = true; closeSheet(); go('today'); },
+  'layout-done': () => { ui.layoutEdit = false; render(); toast('版面已保存'); },
+  'layout-reset': () => confirmSheet('回到預設版面?', '順序與隱藏設定都會清除,回到依時段自動調整。', '回到預設', () => {
+    state.settings.todayLayout = null; state.settings.todayHidden = []; state.settings.todayAuto = true;
+    save(); render(); toast('已回到預設版面');
+  }),
+  'lay-move': d => {
+    const order = todayOrder(), i = order.indexOf(d.id), j = i + Number(d.d);
+    if (i < 0 || j < 0 || j >= order.length) return;
+    order.splice(j, 0, order.splice(i, 1)[0]);
+    commitLayout(order);
+  },
+  'lay-toggle': d => {
+    const hid = state.settings.todayHidden || (state.settings.todayHidden = []);
+    const i = hid.indexOf(d.id);
+    if (i < 0) hid.push(d.id); else hid.splice(i, 1);
+    save(); render();
+  },
+  'today-auto': d => { state.settings.todayAuto = d.v === '1'; save(); settingsSheet(); },
+
+  /* 時光軸 */
+  'timeline': () => { ui.tlLimit = 60; timelineSheet(); },
+  'tl-more': () => { ui.tlLimit = (ui.tlLimit || 60) + 60; timelineSheet(); },
+
+  /* 手帳鎖 */
+  'lock-on': () => openLockUI('set'),
+  'lock-off': () => openLockUI('off'),
+  'lock-delay': d => { const c = lockCfg(); if (!c) return; c.delay = Number(d.v); save(); settingsSheet(); },
+  'pin-key': d => {
+    if (d.k === 'clear'){ lockRT.pin = ''; drawLock(); return; }
+    if (d.k === 'back'){ lockRT.pin = lockRT.pin.slice(0, -1); drawLock(); return; }
+    if (lockRT.pin.length >= 4) return;
+    lockRT.pin += d.k; buzz(6); drawLock();
+    if (lockRT.pin.length === 4) setTimeout(pinEntered, 130);
+  },
+  'pin-cancel': () => { closeLockUI(); if (lockOn() && lockRT.mode !== 'set') settingsSheet(); else settingsSheet(); },
+  'pin-forgot': () => { lockRT.mode = 'forgot'; drawLock(); },
+  'pin-back': () => { lockRT.mode = 'verify'; lockRT.pin = ''; lockRT.wipeArmed = false; drawLock(); },
+  'pin-wipe': () => {
+    if (!lockRT.wipeArmed){ lockRT.wipeArmed = true; drawLock(); return; }
+    try{ localStorage.removeItem(AUTO_BACKUP_KEY); localStorage.removeItem(PRE_IMPORT_KEY); }catch(e){}
+    idbMirror.clear(); state = defaultState(); save(); closeLockUI(); render(); toast('已清空,重新開始');
+  },
+
+  /* 每晚提醒 */
+  'reminder-on': async () => {
+    const t = ($('#remTime') && $('#remTime').value) || '21:30';
+    if (await enableReminder(t)){ settingsSheet(); toast(`每晚 ${t} 會輕輕提醒你`); }
+  },
+  'reminder-off': () => {
+    state.settings.reminder = {enabled:false, time:reminderCfg().time, lastFired:null};
+    clearTimeout(remindT); save(); settingsSheet(); toast('已關閉提醒');
+  },
+
+  'persist-ask': async () => {
+    const ok = await checkPersist(true);
+    settingsSheet();
+    toast(ok ? '已開啟長期保存 ✓' : '瀏覽器暫時沒有同意,加入主畫面後可再試');
+  },
   'export-copy': async () => {
     const txt = exportJSON();
     try{ await navigator.clipboard.writeText(txt); markBackedUp(); toast('已複製,貼到備忘錄保存吧'); }
@@ -2349,6 +2928,12 @@ document.addEventListener('click', e => {
   if (act){ e.preventDefault(); act(el.dataset, el, e); }
 });
 document.addEventListener('keydown', e => {
+  /* 上鎖時鍵盤只剩數字與退格,其他一律不作用 */
+  if(!lockRT.open){
+    if(/^[0-9]$/.test(e.key)){e.preventDefault();actions['pin-key']({k:e.key});}
+    else if(e.key==='Backspace'){e.preventDefault();actions['pin-key']({k:'back'});}
+    return;
+  }
   if(e.key==='Escape'&&$('#sheetRoot').children.length){e.preventDefault();closeSheet();return;}
   if(e.key==='Tab'&&$('#sheetRoot').children.length){
     const f=[...$('#sheetRoot').querySelectorAll('button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])')].filter(x=>x.offsetParent!==null);
@@ -2407,6 +2992,16 @@ document.addEventListener('input', e => {
   if(el.dataset.input==='ref-search'){
     clearTimeout(el._searchT);el._searchT=setTimeout(()=>{if(composing)return;ui.refQuery=el.value;render();const n=$('#refSearch');if(n){n.focus();n.setSelectionRange(n.value.length,n.value.length);}},220);
   }
+  /* 領域改名邊打邊存,不重繪彈窗,游標與注音組字都不會被打斷 */
+  if(el.dataset.input==='area-name'){
+    clearTimeout(el._areaT);
+    el._areaT=setTimeout(()=>{
+      if(composing)return;
+      const a=areaList().find(x=>x.id===el.dataset.id);if(!a)return;
+      a.lb=(el.value||'').trim().slice(0,6)||'領域';
+      save();renderSoon();
+    },300);
+  }
   if(el.dataset.input==='week-review'){
     clearTimeout(el._reviewT);el._reviewT=setTimeout(()=>{const k=currentWeekKey(),r=state.weeklyReviews[k]||(state.weeklyReviews[k]={});r[el.dataset.key]=el.value;r.updatedAt=Date.now();save();flashSaved();},300);
   }
@@ -2454,10 +3049,42 @@ document.addEventListener('drop',e=>{
   list.forEach((x,i)=>x.order=i);t.bucket=bucket;t.focus=t.focus&&bucket==='today';t.scheduledDate=bucket==='today'?todayKey():null;
   ui.todoSort='custom';ui.todoDir='asc';save();render();toast(`已移到${{today:'今天',week:'本週',later:'之後'}[bucket]}`);
 });
+/* 今日版面的拖曳:滑鼠與手指共用同一套 pointer 事件,不必分兩種實作 */
+let layDrag=null;
+document.addEventListener('pointerdown',e=>{
+  const h=e.target.closest('[data-lay-drag]');if(!h)return;
+  const card=h.closest('.lay-card');
+  layDrag={id:h.dataset.layDrag,pointer:e.pointerId,card};
+  try{ h.setPointerCapture&&h.setPointerCapture(e.pointerId); }catch(err){}
+  card&&card.classList.add('lay-dragging');
+  e.preventDefault();
+});
+document.addEventListener('pointermove',e=>{
+  if(!layDrag||e.pointerId!==layDrag.pointer)return;
+  document.querySelectorAll('.lay-over').forEach(x=>x.classList.remove('lay-over'));
+  const under=document.elementFromPoint(e.clientX,e.clientY);
+  const t=under&&under.closest('.lay-card');
+  if(t&&t!==layDrag.card)t.classList.add('lay-over');
+  e.preventDefault();
+});
+document.addEventListener('pointerup',e=>{
+  if(!layDrag||e.pointerId!==layDrag.pointer)return;
+  const under=document.elementFromPoint(e.clientX,e.clientY);
+  const t=under&&under.closest('.lay-card');
+  document.querySelectorAll('.lay-dragging,.lay-over').forEach(x=>x.classList.remove('lay-dragging','lay-over'));
+  const from=layDrag.id;layDrag=null;
+  if(!t||!t.dataset.lay||t.dataset.lay===from)return;
+  const order=todayOrder(),i=order.indexOf(from),j=order.indexOf(t.dataset.lay);
+  if(i<0||j<0)return;
+  order.splice(j,0,order.splice(i,1)[0]);
+  commitLayout(order);buzz(8);
+});
 let touchDrag=null;
 document.addEventListener('pointerdown',e=>{
   const h=e.target.closest('[data-touch-drag]');if(!h||e.pointerType==='mouse')return;
-  const item=h.closest('[data-task-id]');touchDrag={id:h.dataset.touchDrag,pointer:e.pointerId,item,startY:e.clientY,moved:false};h.setPointerCapture&&h.setPointerCapture(e.pointerId);item&&item.classList.add('touch-dragging');e.preventDefault();
+  const item=h.closest('[data-task-id]');touchDrag={id:h.dataset.touchDrag,pointer:e.pointerId,item,startY:e.clientY,moved:false};
+  try{ h.setPointerCapture&&h.setPointerCapture(e.pointerId); }catch(err){}
+  item&&item.classList.add('touch-dragging');e.preventDefault();
 });
 document.addEventListener('pointermove',e=>{
   if(!touchDrag||e.pointerId!==touchDrag.pointer)return;touchDrag.moved=touchDrag.moved||Math.abs(e.clientY-touchDrag.startY)>8;
@@ -2487,14 +3114,55 @@ updateStorageBanner();
 document.body.classList.toggle('text-large',state.settings.textSize==='large');
 /* 有附 sw.js 的完整部署才註冊;單檔使用時不會在主控台留下 404 */
 if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
-  fetch('./sw.js',{method:'HEAD'}).then(r=>{ if(r.ok) return navigator.serviceWorker.register('./sw.js'); }).catch(()=>{});
+  fetch('./sw.js',{method:'HEAD'})
+    .then(r=>r.ok?navigator.serviceWorker.register('./sw.js'):null)
+    .then(reg=>{
+      if(!reg)return;
+      /* 有新版時只輕輕說一聲,不打斷正在寫的東西;下次開啟就是新版 */
+      reg.addEventListener('updatefound',()=>{
+        const w=reg.installing;if(!w)return;
+        w.addEventListener('statechange',()=>{
+          if(w.state==='installed'&&navigator.serviceWorker.controller) toast('手帳已更新,下次開啟套用');
+        });
+      });
+    }).catch(()=>{});
 }
+/* 已經有資料的人直接請求長期保存;第一次使用的人只做靜默檢查,不打擾 */
+checkPersist(!!loadedState);
+/* 主畫面長按捷徑帶進來的參數:直接開到那一頁,用完就把網址還原乾淨 */
+let launchFocusAdd=false;
+try{
+  const p=new URLSearchParams(location.search);
+  const t=p.get('tab');
+  if(t&&TABS.some(x=>x.id===t))ui.tab=t;
+  if(p.get('add')==='1')launchFocusAdd=true;
+  if(location.search)history.replaceState(null,'',location.pathname+location.hash);
+}catch(e){}
 ensureRecurringTasks(todayKey());promoteScheduled(todayKey());
 if(!store.loadError){
   if(state.settings.lastAutoBackupDay!==todayKey()){store.autoBackup(state);state.settings.lastAutoBackupDay=todayKey();}
   store.save(state);   /* 把升級後的結構寫回,避免舊格式殘留 */
 }
 render();
+if(launchFocusAdd){
+  const box=$('#qaTodo')||$('#qaFocus')||$('#qaToday');
+  if(box){ box.scrollIntoView({block:'center'}); setTimeout(()=>box.focus({preventScroll:true}),60); }
+}
+/* 一開啟就先擋在鎖前面,畫面內容不會閃出來 */
+lockNow();
+scheduleReminder();
+/* 切到背景先糊掉畫面(App 切換器的縮圖也看不到),回來時看離開多久決定要不要上鎖 */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden'){
+    lockRT.hiddenAt = Date.now();
+    if (lockOn()) document.body.classList.add('privacy-blur');
+    return;
+  }
+  document.body.classList.remove('privacy-blur');
+  if (!lockOn() || !lockRT.open) return;
+  const delay = Number(lockCfg().delay);
+  if (Date.now() - lockRT.hiddenAt >= (Number.isFinite(delay) ? delay : 60) * 1000) lockNow();
+});
 setTimeout(()=>{
   if(store.loadError){offerDataRescue();return;}
   if(!state.settings.lastOpenDay){state.settings.lastOpenDay=todayKey();save();}
