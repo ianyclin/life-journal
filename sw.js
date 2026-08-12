@@ -96,7 +96,9 @@ function latestSnapshot(){
     let done = false;
     const finish = v => { if (!done){ done = true; resolve(v); } };
     try{
-      const q = indexedDB.open('life_journal_rescue', 1);
+      /* 不指定版本:主程式會把這個 DB 升到 v2(多一個 handles store),
+         這裡若寫死舊版號會直接撞 VersionError。 */
+      const q = indexedDB.open('life_journal_rescue');
       q.onerror = () => finish(null);
       q.onupgradeneeded = () => { try{ q.transaction.abort(); }catch(err){} finish(null); };
       q.onsuccess = () => {
