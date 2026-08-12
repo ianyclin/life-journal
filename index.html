@@ -2871,7 +2871,7 @@ const SETTINGS_SECTIONS = [
       ? `上次備份 ${new Date(state.settings.lastBackupAt).toLocaleDateString('zh-TW',{month:'numeric',day:'numeric'})}`
       : '還沒備份過'},
   {id:'guard',  ic:'🔒', lb:'鎖定與提醒', sub:() => `${lockOn() ? '已上鎖' : '未上鎖'} · ${reminderCfg().enabled ? `每晚 ${reminderCfg().time}` : '沒有提醒'}`},
-  {id:'about',  ic:'📖', lb:'說明與工具', sub:() => '安裝方式、鍵盤快捷鍵、清除資料'}
+  {id:'about',  ic:'📖', lb:'說明與工具', sub:() => `安裝方式、鍵盤快捷鍵 · v${APP_VERSION}`}
 ];
 function settingsSheet(){
   const counts = `${state.tasks.length} 筆待辦 · ${state.habits.length} 個習慣 · ${Object.keys(state.reflections).length} 篇反思 · ${state.goals.length} 個目標`;
@@ -2884,12 +2884,7 @@ function settingsSheet(){
       <span class="grow"><strong>${x.lb}</strong><span class="hint" style="display:block">${x.sub()}</span></span>
       <span class="set-arrow">›</span>
     </button>`).join('')}
-    <div class="hint" style="margin-top:16px;line-height:1.8">🌙 建議每晚睡前：勾掉今天完成的事 → 習慣打卡 → 寫一句反思。</div>
-    <div class="lbl">關於</div>
-    <div class="hint" style="line-height:1.95">
-      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作 · v${APP_VERSION}<br>
-      所有資料只存在<b>這台裝置</b>上，不會上傳，也沒有任何追蹤。清除瀏覽器資料或更換裝置時可能遺失，建議偶爾備份。
-    </div>`);
+    <div class="hint" style="margin-top:16px;line-height:1.8">🌙 建議每晚睡前：勾掉今天完成的事 → 習慣打卡 → 寫一句反思。</div>`);
 }
 function settingsSection(id){
   const back = lb => `<button class="set-back" data-act="settings">‹ 設定</button><h2 style="margin-top:4px">${lb}</h2>`;
@@ -3010,6 +3005,11 @@ function settingsSection(id){
       🤖 <b>Android：</b>用 Chrome 開啟 → 選單 →「安裝應用程式」。
     </div>
     <button class="btn plain full sm" style="margin-top:12px" data-act="shortcuts">電腦版鍵盤快捷鍵</button>
+    <div class="lbl">關於</div>
+    <div class="hint" style="line-height:1.95">
+      這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作 · v${APP_VERSION}<br>
+      所有資料只存在<b>這台裝置</b>上，不會上傳，也沒有任何追蹤。清除瀏覽器資料或更換裝置時可能遺失，建議偶爾備份。
+    </div>
     <hr class="divider">
     <button class="danger-link" style="padding-top:2px" data-act="wipe">清除全部資料</button>`;
   }
