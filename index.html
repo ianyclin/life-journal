@@ -121,7 +121,8 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 .btn.ghost{background:transparent;color:var(--acc);border:1.5px solid var(--acc-tint);background:var(--acc-soft)}
 .btn.ghost:active{background:var(--acc-tint)}
 .btn.sm{padding:7px 12px;font-size:13px;border-radius:10px}
-.btn.plain{background:transparent;color:var(--ink2);border:1px solid var(--line)}
+.btn.plain{background:var(--card2);color:var(--ink2);border:1px solid var(--line)}
+.btn.plain:active{background:var(--line-soft)}
 .chip{
   display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border-radius:999px;
   background:var(--card2);border:1px solid var(--line-soft);font-size:13.5px;color:var(--ink2);
@@ -2917,7 +2918,10 @@ function settingsSection(id){
     <div class="seg">${THEMES.map(t => `<button class="chip ${(state.settings.theme || 'paper') === t.id ? 'on' : ''}" data-act="theme-set" data-v="${t.id}"><i class="adot" style="background:${t.sw}"></i>${t.lb}</button>`).join('')}</div>
     <div class="hint" style="margin-top:7px">深色模式會自動套用對應的深色版本，不必另外設定。</div>
     <div class="lbl">生活領域</div>
-    <div class="row"><span class="grow hint">${areaList().map(a => esc(a.lb)).join('、')}</span><button class="chip" data-act="area-manage">管理 ›</button></div>
+    <button class="set-row" style="border-bottom:none;padding-left:0" data-act="area-manage">
+      <span class="grow"><strong>管理生活領域</strong><span class="hint" style="display:block">${areaList().map(a => esc(a.lb)).join('、')}</span></span>
+      <span class="set-arrow">›</span>
+    </button>
     <div class="lbl">今日版面</div>
     <div class="hint" style="margin-bottom:7px">${Array.isArray(state.settings.todayLayout) && state.settings.todayLayout.length
       ? `已自訂順序${todayHidden().length ? `，並收起 ${todayHidden().length} 個區塊` : ''}。`
