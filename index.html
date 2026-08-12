@@ -2739,7 +2739,7 @@ function todayPrompts(){
   /* 什麼都沒發生的日子。系統裡是空白，不代表你今天沒有活過。
      只在接近一天結束時出現；心情很差的日子讓別的問題先上。 */
   if (!doneToday.length && !habitsDone.length && !rested.length && evening && !lowMood)
-    add(5, '今天沒有勾掉什麼。那今天是怎麼過的？', '今天是這樣過的：');
+    add(5, '今天沒有勾掉什麼，那今天是怎麼過的？', '今天是這樣過的：');
 
   return pool.sort((a, b) => a.rank - b.rank);
 }
