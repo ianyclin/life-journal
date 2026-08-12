@@ -540,6 +540,16 @@ body.privacy-blur #app{filter:blur(18px)}
 .lay-over{outline:2.5px dashed var(--acc)!important;outline-offset:3px}
 .lay-tip{background:var(--acc-soft);border:1px solid var(--acc-tint)}
 
+/* 出事時的最後一道防線 */
+#errorBanner{
+  position:fixed;left:0;right:0;top:0;z-index:150;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+  background:var(--acc-soft);border-bottom:1px solid var(--acc);color:var(--acc-deep);
+  font-size:13.5px;line-height:1.7;
+}
+#errorBanner button{color:inherit;text-decoration:underline;font-weight:700;margin-left:4px}
+#errorBanner .det{display:block;margin-top:4px;font-size:11.5px;opacity:.75;word-break:break-all}
+
 /* Toast */
 #toast{
   position:fixed;left:50%;bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 18px);
@@ -573,6 +583,7 @@ body.privacy-blur #app{filter:blur(18px)}
 </div>
 <nav id="tabbar" aria-label="主選單"><div class="inner" id="tabInner"></div></nav>
 <div id="sheetRoot"></div>
+<div id="errorBanner" hidden></div>
 <div id="toast" role="status"></div>
 <input type="file" id="importFile" accept=".json,application/json,text/plain" hidden>
 <script>
@@ -889,7 +900,11 @@ const QUOTE_PACKS = [
   {id:'core',   lb:'手帳原生', desc:'慢下來、休息、對自己溫柔', day:QUOTES_CORE,   night:QUOTES_CORE_NIGHT},
   {id:'zen',    lb:'佛教底色', desc:'無常、緣起、中道',         day:QUOTES_ZEN,    night:QUOTES_ZEN_NIGHT},
   {id:'parent', lb:'親子教養', desc:'正向教養、連結先於糾正',   day:QUOTES_PARENT, night:QUOTES_PARENT_NIGHT},
-  {id:'couple', lb:'伴侶相處', desc:'修補、靠近、好好說話',     day:QUOTES_COUPLE, night:QUOTES_COUPLE_NIGHT}
+  {id:'couple', lb:'伴侶相處', desc:'修補、靠近、好好說話',     day:QUOTES_COUPLE, night:QUOTES_COUPLE_NIGHT},
+  /* 自己寫的句子:用 getter 讀 state,加完立刻生效,不必重載 */
+  {id:'mine', lb:'我自己的', desc:'你自己寫下的話',
+    get day(){ return (state.customQuotes && state.customQuotes.day) || []; },
+    get night(){ return (state.customQuotes && state.customQuotes.night) || []; }}
 ];
 /* 稱呼可以自己設定:親子與伴侶那兩包裡的稱謂都是佔位符,渲染時才代入。
    這樣「{ps}也在學怎麼當{pr}」對每個家庭都念得順,而不是只對某一種家庭。 */
@@ -911,10 +926,15 @@ function fillTerms(text){
     .replace(/\{c\}/g, t.childPn);
 }
 const packOn = id => (state.settings.quotePacks || ['core']).includes(id);
+/* 句子的識別碼用內容雜湊,不用索引 —— 之後句庫增刪,收起來的那幾句才不會跑掉 */
+const quoteKey = q => hashText(typeof q === 'string' ? q : q.t);
+const isMuted = q => (state.settings.mutedQuotes || []).includes(quoteKey(q));
 function activeQuotes(night){
   const picked = QUOTE_PACKS.filter(p => packOn(p.id));
-  const pool = (picked.length ? picked : [QUOTE_PACKS[0]]).flatMap(p => night ? p.night : p.day);
-  return pool.length ? pool : QUOTE_PACKS[0].day;   /* 全部關掉也不能開天窗 */
+  const pool = (picked.length ? picked : [QUOTE_PACKS[0]])
+    .flatMap(p => night ? p.night : p.day)
+    .filter(q => !isMuted(q));
+  return pool.length ? pool : QUOTE_PACKS[0].day;   /* 全部關掉或全部收起來,也不能開天窗 */
 }
 const MOODS = [
   {v:1, e:'😣', lb:'糟糕', c:'var(--m1)'},
@@ -1020,7 +1040,7 @@ const dayQuote = () => {
   const d = new Date();
   const n = Math.floor((d - new Date(d.getFullYear(), 0, 0)) / 864e5);
   const pool = activeQuotes(d.getHours() >= 18);
-  return pool[n % pool.length];
+  return pool[(n + (ui.quoteBump || 0)) % pool.length];   /* 想換一句時往後挪一格 */
 };
 /* 箴言可以是純字串,也可以是 {t, by}。有出處的才顯示出處,沒有的就不硬掛名字。 */
 function quoteHTML(q){
@@ -1146,6 +1166,9 @@ const store = (() => {
   };
 })();
 /* 兩種需要一直看得見的狀態:完全不能存(預覽模式)、以及存不進去(空間滿了) */
+/* localStorage 對單一網站大約 5 MB。等到寫不進去才說就太晚了 ——
+   那時已經有東西沒存到。過七成就先提醒,還來得及備份與清理。 */
+const STORAGE_WARN_BYTES = 3.6e6;
 function updateStorageBanner(){
   const el = document.getElementById('storageBanner');
   if (!el) return;
@@ -1155,6 +1178,9 @@ function updateStorageBanner(){
   } else if (!store.ok){
     el.hidden = false; el.classList.remove('danger');
     el.innerHTML = '📱 目前是<b>預覽模式</b>,資料不會被保存。放到 Safari 或正式網址使用時,所有紀錄都會存在你的手機裡。';
+  } else if (store.bytes > STORAGE_WARN_BYTES){
+    el.hidden = false; el.classList.remove('danger');
+    el.innerHTML = `📦 手帳已經用掉約 ${Math.round(store.bytes / 1048576 * 10) / 10} MB,接近瀏覽器對單一網站的上限。<b>建議先下載備份</b>,再清掉很久以前的已完成待辦。 <button data-act="settings" style="text-decoration:underline;font-weight:700">去備份</button>`;
   } else {
     el.hidden = true;
   }
@@ -1193,14 +1219,15 @@ const defaultState = () => ({
   habitLog: {},     // {'YYYY-MM-DD': {habitId:'done'|'rest'}}
   reflections: {},  // {'YYYY-MM-DD': {mood,text,updatedAt}}
   goals: [],        // {id,title,why,done,doneAt,createdAt,steps:[{id,title,done}]}
+  customQuotes: {day:[], night:[]},   // 使用者自己寫的箴言
   goalRecords: [],  // 完成目標的不可回退快照
   weeklyReviews: {},// {'week-start': {proud,adjust,next,updatedAt}}
   recurrences: [],  // 週期待辦範本
   settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true,
-    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null}
+    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[]}
 });
 const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
-  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null});
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[]});
 /* 舊版資料升級:保留既有紀錄,補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
@@ -1245,6 +1272,12 @@ function migrate(s){
     partner: PARTNER_TERMS[tm.partner] ? tm.partner : DEFAULT_TERMS.partner,
     childPn: CHILD_PRONOUNS.includes(tm.childPn) ? tm.childPn : DEFAULT_TERMS.childPn
   } : null;
+  if (!Array.isArray(s.settings.mutedQuotes)) s.settings.mutedQuotes = [];
+  const cq = s.customQuotes;
+  s.customQuotes = {
+    day: Array.isArray(cq && cq.day) ? cq.day.filter(x => typeof x === 'string').slice(0, 200) : [],
+    night: Array.isArray(cq && cq.night) ? cq.night.filter(x => typeof x === 'string').slice(0, 200) : []
+  };
   s.v = 8;
   return s;
 }
@@ -1601,6 +1634,28 @@ function checkGoalComplete(g){
 
 /* =================== 渲染核心 =================== */
 function render(){
+  try { renderInner(); }
+  catch(err){ showFatal(err); }
+}
+/* 全域錯誤邊界:例外不該讓畫面停在半路,更不該讓人以為資料不見了。
+   橫幅是非阻斷的 —— 小錯誤時畫面還能用,不必逼人重新整理。 */
+let fatalShown = false;
+function showFatal(err){
+  try{ console.error(err); }catch(e){}
+  if (fatalShown) return;
+  fatalShown = true;
+  const el = document.getElementById('errorBanner');
+  if (!el) return;
+  const msg = (err && (err.message || err.reason && err.reason.message)) || String(err || '');
+  el.hidden = false;
+  el.innerHTML = '⚠️ <b>畫面出了點狀況,但你的紀錄還在。</b>重新整理通常就會恢復;如果一直發生,請到設定下載備份檔。'
+    + '<button data-act="reload-app">重新整理</button>'
+    + `<span class="det">${esc(String(msg).slice(0, 160))}</span>`;
+}
+window.addEventListener('error', e => showFatal(e.error || e.message));
+window.addEventListener('unhandledrejection', e => showFatal(e.reason));
+
+function renderInner(){
   const main = $('#view');
   const st = window.scrollY;
   const views = { today: vToday, todo: vTodo, habit: vHabit, reflect: vReflect, goal: vGoal };
@@ -2069,7 +2124,7 @@ function vToday(){
       <button class="icon-btn" data-act="global-search" aria-label="搜尋人生手帳">⌕</button>
       <button class="icon-btn" data-act="settings" aria-label="設定與備份">${ICONS.gear}</button>
     </div>
-    <div class="greet-quote">${quoteHTML(dayQuote())}</div>
+    <button class="greet-quote" style="width:100%;text-align:left;display:block" data-act="quote-menu" aria-label="今天這句:換一句或收起來">${quoteHTML(dayQuote())}</button>
   </div>
 
   ${!state.settings.onboardingDismissed&&(starter||meaningful<4)?`<div class="card">
@@ -2721,6 +2776,7 @@ function settingsSheet(){
       ${QUOTE_PACKS.map(p => `<button class="chip ${packOn(p.id) ? 'on' : ''}" data-act="quote-pack" data-id="${p.id}">${p.lb}<span class="filter-count">${p.day.length + p.night.length}</span></button>`).join('')}
     </div>
     <div class="hint" style="margin-top:7px">${QUOTE_PACKS.filter(p => packOn(p.id)).map(p => p.desc).join(' · ') || '一包都沒開的話,會自動用「手帳原生」。'}<br>目前抽樣範圍:白天 ${activeQuotes(false).length} 句、夜晚 ${activeQuotes(true).length} 句。</div>
+    <button class="btn ghost full sm" style="margin-top:9px" data-act="my-quotes">寫我自己的句子 ›</button>
     ${packOn('parent') || packOn('couple') ? `<div class="lbl">句子裡怎麼稱呼</div>
       <div class="hint" style="margin-bottom:6px">親子與伴侶那兩包會用到稱謂,設成你家的說法會念得比較順。</div>
       ${packOn('parent') ? `<div class="hint" style="margin:8px 0 5px">孩子叫你</div>
@@ -2870,6 +2926,47 @@ const fsBackup = {
     state.settings.fsBackup = null; save();
   }
 };
+
+/* 點首頁那句話會打開這張小選單:換一句、把它收起來、或加一句自己的。
+   最準的那句話,通常是你自己某天突然想到的 —— 所以入口放在句子本身,而不是設定深處。 */
+function quoteMenuSheet(){
+  const q = dayQuote();
+  openSheet(`<h2>今天這句</h2>
+    <div class="greet-quote" style="margin:0 0 14px">${quoteHTML(q)}</div>
+    <button class="btn ghost full sm" data-act="quote-bump">換一句看看</button>
+    <button class="btn plain full sm" style="margin-top:9px" data-act="quote-mute" data-k="${quoteKey(q)}">這句不要再出現</button>
+    <hr class="divider">
+    <button class="btn full" data-act="my-quotes">寫一句我自己的話 ›</button>`);
+}
+function myQuotesSheet(){
+  const cq = state.customQuotes || {day:[], night:[]};
+  const muted = state.settings.mutedQuotes || [];
+  const mutedTexts = QUOTE_PACKS.flatMap(p => [...p.day, ...p.night]).filter(isMuted);
+  const row = (q, when) => `<div class="area-row" style="padding:7px 0">
+      <span class="grow" style="font-size:14.5px">${esc(fillTerms(q))}</span>
+      <span class="hint" style="flex:none">${when === 'night' ? '夜晚' : '白天'}</span>
+      <button class="move-btn" data-act="my-quote-del" data-when="${when}" data-q="${esc(q)}" style="color:var(--m1)" aria-label="刪除">✕</button>
+    </div>`;
+  openSheet(`<h2>我自己的句子</h2>
+    <div class="hint" style="line-height:1.75">想到什麼就加進來,它會和其他句庫一起出現在首頁。這裡寫的話通常最準 —— 因為是你自己想到的。</div>
+    <div class="lbl">加一句</div>
+    <input class="field" id="myQuoteText" placeholder="例如:今天早點回家,陪他們吃飯。" maxlength="40" enterkeyhint="done" data-enter="my-quote-add">
+    <div class="row" style="margin-top:9px">
+      <button class="chip ${ui.myQuoteWhen !== 'night' ? 'on' : ''}" data-act="my-quote-when" data-v="day">白天</button>
+      <button class="chip ${ui.myQuoteWhen === 'night' ? 'on' : ''}" data-act="my-quote-when" data-v="night">夜晚</button>
+      <button class="btn sm grow" data-act="my-quote-add">加入</button>
+    </div>
+    ${cq.day.length || cq.night.length ? `<div class="lbl">已經寫下的 ${cq.day.length + cq.night.length} 句</div>
+      ${cq.day.map(q => row(q, 'day')).join('')}${cq.night.map(q => row(q, 'night')).join('')}`
+      : '<div class="hint" style="margin-top:12px">還沒有。第一句可以是你今天最想提醒自己的事。</div>'}
+    ${mutedTexts.length ? `<div class="lbl">已收起的 ${mutedTexts.length} 句</div>
+      ${mutedTexts.map(q => `<div class="area-row" style="padding:7px 0">
+        <span class="grow hint">${esc(fillTerms(typeof q === 'string' ? q : q.t))}</span>
+        <button class="chip" data-act="quote-unmute" data-k="${quoteKey(q)}">放回去</button>
+      </div>`).join('')}` : ''}
+    <div class="sheet-actions"><button class="btn full" data-act="sheet-close">完成</button></div>`);
+  setTimeout(() => { const i = $('#myQuoteText'); if (i) i.focus(); }, 80);
+}
 
 /* 生活領域管理:改名、換色、增刪。顏色只在調色盤裡選,才能同時顧到深色模式與色盲辨識。 */
 function areaManagerSheet(openPalette){
@@ -3544,6 +3641,41 @@ const actions = {
     catch(e){ toast('這個環境無法下載檔案'); }
   },
   'haptics': d => { state.settings.haptics = d.v === '1'; save(); if(d.v==='1') buzz(12); settingsSheet(); },
+  /* 每日箴言:換一句、收起來、寫自己的 */
+  'reload-app': () => location.reload(),
+  'quote-menu': () => quoteMenuSheet(),
+  'quote-bump': () => { ui.quoteBump = (ui.quoteBump || 0) + 1; render(); quoteMenuSheet(); },
+  'quote-mute': d => {
+    const m = state.settings.mutedQuotes || (state.settings.mutedQuotes = []);
+    if (!m.includes(d.k)) m.push(d.k);
+    save(); closeSheet(); render(); toast('已收起,設定裡可以放回來');
+  },
+  'quote-unmute': d => {
+    state.settings.mutedQuotes = (state.settings.mutedQuotes || []).filter(k => k !== d.k);
+    save(); render(); myQuotesSheet();
+  },
+  'my-quotes': () => myQuotesSheet(),
+  'my-quote-when': d => { ui.myQuoteWhen = d.v; myQuotesSheet(); },
+  'my-quote-add': () => {
+    const i = $('#myQuoteText'); const v = ((i && i.value) || '').trim();
+    if (!v) { i && i.focus(); return; }
+    const cq = state.customQuotes || (state.customQuotes = {day:[], night:[]});
+    const when = ui.myQuoteWhen === 'night' ? 'night' : 'day';
+    if (cq[when].includes(v)) { toast('這句已經有了'); return; }
+    cq[when].push(v);
+    /* 第一次寫就自動把這一包打開,不然加了卻看不到 */
+    const packs = state.settings.quotePacks || (state.settings.quotePacks = ['core']);
+    if (!packs.includes('mine')) packs.push('mine');
+    save(); render(); myQuotesSheet(); toast('已加入');
+  },
+  'my-quote-del': d => {
+    const cq = state.customQuotes || {day:[], night:[]};
+    const when = d.when === 'night' ? 'night' : 'day';
+    cq[when] = (cq[when] || []).filter(q => q !== d.q);
+    state.customQuotes = cq;
+    save(); render(); myQuotesSheet();
+  },
+
   /* 每日箴言句庫與稱呼 */
   'term-set': d => {
     const t = terms();
