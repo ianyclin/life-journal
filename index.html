@@ -429,6 +429,8 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .lead-row:last-child{border-bottom:none}
 .lead-row:active{opacity:.6}
 .lead-arrow{flex:none;color:var(--ink3)}
+.lead-swap{margin-top:6px;font-size:12px;color:var(--ink3);padding:3px 2px}
+.lead-swap:active{color:var(--acc)}
 .prompt-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin:9px 0 2px;scrollbar-width:none}
 .prompt-chips::-webkit-scrollbar{display:none}
 .prompt-chips .chip{flex:none;font-size:12.5px;padding:6px 11px}
@@ -2621,13 +2623,23 @@ function randomPastReflection(seed){
 const hashInt = s => { let h = 2166136261; for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h,16777619); } return h|0; };
 
 /* ===== 從今天的紀錄長出來的書寫提示 =====
-   Apple Journal 的智慧建議是看照片與運動；這裡看的是你自己的待辦、習慣、目標與心情 ——
-   三種資料剛好都在同一本手帳裡，這是別的 App 給不了的。
-   全部在本機算，不連任何服務。原則：用真正的名字說話，而且沒做到的時候不責備。 */
+   Apple Journal 的智慧建議看的是照片與運動；這裡看的是你自己的待辦、習慣、目標與心情 ——
+   三種資料剛好都在同一本手帳裡，這是別的 App 給不了的。全部在本機算，不連任何服務。
+
+   三個原則：
+   一、用真正的名字說話。「今天完成了『陪媽媽回診』」比「今天完成了 3 項任務」有溫度。
+   二、用問句，不用評語。沒做到的時候不責備。
+   三、狀態越差，越不要要求使用者解釋自己 —— 低潮時少問「為什麼」，多問「今天發生了什麼、
+       現在還留著什麼」。「為什麼」很容易從反思變成自我審問。
+
+   排序原則：越「只有今天才問得出來」的問題，優先級越高。
+   一次只顯示一條 —— 三條同時出現，日記入口就變成三個未回答的問題。 */
 function todayPrompts(){
   const tk = todayKey();
+  const now = new Date(), hour = now.getHours();
   const ref = state.reflections[tk] || {};
   const written = (ref.text || '').trim();
+  const lowMood = ref.mood && ref.mood <= 2;          /* 今天標了糟糕或低落 */
   const doneToday = state.tasks.filter(t => t.done && t.doneAt && dkey(new Date(t.doneAt)) === tk);
   const focus = focusTasks();
   const focusDone = focus.filter(t => t.done);
@@ -2635,53 +2647,101 @@ function todayPrompts(){
   const habitsDone = state.habits.filter(h => isChecked(h.id, tk));
   const rested = state.habits.filter(h => isRest(h.id, tk));
   const goalTask = doneToday.find(t => t.goalId && goalById(t.goalId));
-  const yesterday = state.reflections[dkey(addDays(new Date(), -1))];
-  const streak = reflectStreak();
-  const hour = new Date().getHours();
-  const out = [];
-  const add = (q, lead) => out.push({q, lead});
+  const yst = state.reflections[dkey(addDays(now, -1))];
+  const evening = hour >= 19 || hour < 5;             /* 這些話留到晚上再說 */
 
-  /* 先講具體發生過的事，用名字 */
+  const pool = [];
+  const add = (rank, q, lead) => pool.push({rank, q, lead:lead || ''});
+
+  /* ── 只有今天才問得出來的事（優先級最高）── */
+
+  /* 完成了拖很久的事 */
+  const longAwaited = doneToday.find(t => t.createdAt && (Date.now() - t.createdAt) > 14 * 864e5);
+  if (longAwaited)
+    add(1, `「${longAwaited.title}」終於從清單上離開了。拖著它的這段時間，是什麼感覺？`, `「${longAwaited.title}」終於做完了，`);
+
+  /* 很久沒碰的習慣今天又出現 */
+  const returned = habitsDone.find(h => {
+    for (let i = 1; i <= 10; i++) if (isChecked(h.id, dkey(addDays(now, -i)))) return false;
+    /* 「又出現」的前提是以前真的做過 —— 今天不算，否則第一次打卡也會被說成「又」 */
+    return Object.keys(state.habitLog).some(k => k !== tk && isChecked(h.id, k));
+  });
+  if (returned)
+    add(1, `「${returned.name}」今天又出現了。是什麼讓你想起它？`, `今天又做了「${returned.name}」，`);
+
   if (focusDone.length)
-    add(`今天完成了「${focusDone[0].title}」。做完的那一刻，心裡是什麼感覺？`, `今天完成了「${focusDone[0].title}」，`);
+    add(2, `今天完成了「${focusDone[0].title}」。現在回頭看，心裡是什麼感覺？`, `今天完成了「${focusDone[0].title}」，`);
 
   if (goalTask)
-    add(`你往「${goalById(goalTask.goalId).title}」走了一步。這個方向現在感覺如何？`, `離「${goalById(goalTask.goalId).title}」又近了一點，`);
+    add(2, `你往「${goalById(goalTask.goalId).title}」走了一步。這個方向現在感覺如何？`, `離「${goalById(goalTask.goalId).title}」又近了一點，`);
 
-  if (focusLeft.length && hour >= 15)
-    add(`「${focusLeft[0].title}」今天沒走到。是卡在哪裡，還是今天本來就滿了？`, `「${focusLeft[0].title}」今天沒完成，`);
-
-  if (habitsDone.length)
-    add(`今天有「${habitsDone[0].name}」。它現在對你來說是負擔，還是喘口氣的時間？`, `今天做了「${habitsDone[0].name}」，`);
+  /* 計畫和實際差很多 —— 承認計畫不是現實的唯一版本 */
+  if (focus.length >= 2 && focusDone.length <= 1 && doneToday.length >= 2 && evening)
+    add(2, '今天和原本想的不太一樣。真正佔滿今天的是什麼？', '今天和原本想的不一樣，真正佔滿今天的是');
 
   if (rested.length)
-    add(`今天讓「${rested[0].name}」休息了。這樣的一天，過起來還好嗎？`, `今天讓「${rested[0].name}」休息，`);
+    add(3, `今天讓「${rested[0].name}」休息了。這樣的一天，過起來還好嗎？`, `今天讓「${rested[0].name}」休息，`);
+
+  if (habitsDone.length)
+    add(3, `今天有「${habitsDone[0].name}」。做的時候，感覺跟最近一樣嗎？`, `今天做了「${habitsDone[0].name}」，`);
 
   if (doneToday.length >= 5)
-    add(`今天做完了 ${doneToday.length} 件事。哪一件是你真的想做，而不只是該做的？`, '今天做了很多事，其中');
+    add(3, `今天做完了 ${doneToday.length} 件事。哪一件現在還留在心裡？`, '今天做了很多事，其中');
 
-  /* 什麼都沒發生的日子 —— 這種時候最需要溫柔 */
-  /* 標休息也是一種決定，不算「什麼都沒發生」 */
-  if (!doneToday.length && !habitsDone.length && !rested.length)
-    add('今天沒有勾掉什麼。那今天是怎麼過的？', '今天是這樣過的：');
+  /* ── 跨日的脈絡 ── */
 
-  /* 心情已經選了，但還沒寫字 */
-  if (ref.mood && !written){
-    const m = MOODS.find(x => x.v === ref.mood);
-    if (m) add(`你把今天標成「${m.lb}」。是什麼讓它變成這樣？`, `今天的心情是${m.lb}，因為`);
+  /* 停滯很久的目標 */
+  const staleGoal = state.goals.find(g => !g.done && !g.paused &&
+    Date.now() - (g.lastProgressAt || g.createdAt || Date.now()) > 21 * 864e5);
+  if (staleGoal && evening)
+    add(4, `「${staleGoal.title}」停在這裡一陣子了。它現在還是你想去的地方嗎？`, `關於「${staleGoal.title}」，`);
+
+  /* 一直在休息的習慣 —— 不是催他回來，是問關係變了沒 */
+  const quiet = state.habits.find(h => {
+    if (isChecked(h.id, tk)) return false;
+    let restDays = 0;
+    for (let i = 0; i < 14; i++){ const k = dkey(addDays(now, -i)); if (isChecked(h.id, k)) return false; if (isRest(h.id, k)) restDays++; }
+    return restDays >= 3;
+  });
+  if (quiet && evening)
+    add(4, `「${quiet.name}」最近安靜了一陣子。你還想把它留在生活裡嗎？`, `關於「${quiet.name}」，`);
+
+  /* 昨天寫過的話。心情很差那天的內容不引用 —— 機械式重提會很冷 */
+  if (yst && (yst.text || '').trim() && !written){
+    const safe = !yst.mood || yst.mood >= 3;
+    add(5, safe
+      ? `昨天你寫了「${yst.text.trim().split('\n')[0].slice(0, 12)}…」。今天呢？`
+      : '昨天你有留下幾句。今天呢？', '');
   }
 
-  /* 回頭看的線索 */
-  if (yesterday && (yesterday.text || '').trim() && !written)
-    add(`昨天你寫了「${(yesterday.text || '').trim().split('\n')[0].slice(0, 12)}…」。今天呢？`, '');
+  /* 心情已經標了但還沒寫字。不問「為什麼」——問內容 */
+  if (ref.mood && !written){
+    const m = MOODS.find(x => x.v === ref.mood);
+    if (m) add(2, `今天是「${m.lb}」。現在最留在心裡的是什麼？`, `今天的心情是${m.lb}，`);
+  }
 
-  if (streak >= 3)
-    add(`已經連續 ${streak} 天寫下來了。這幾天裡，最想記得的是哪一件？`, '這幾天裡我最想記得的是');
+  /* ── 統計型訊號（優先級最低）── */
 
-  if (new Date().getDay() === 0)
-    add('這週要結束了。回頭看，哪一天你想再過一次？', '這週我想再過一次的那天是');
+  /* 不說「連續幾天」——這本手帳花很多力氣反對連續天數焦慮，不該在這裡把它遊戲化 */
+  if (reflectStreak() >= 3)
+    add(6, '這幾天都留下了一點。最想記得哪一件？', '這幾天裡我最想記得的是');
 
-  return out.slice(0, 3);
+  if (now.getDay() === 0)
+    add(6, (Math.floor((now - new Date(now.getFullYear(), 0, 0)) / 864e5) % 2)
+      ? '這週要結束了。有哪一刻你還想留著？'
+      : '這週要結束了。回頭看，哪一天你想再過一次？', '這週我想留著的那一刻是');
+
+  /* 重點還沒完成 —— 留到晚上才問，而且心情很差的日子不問。
+     「還在今天裡」不宣告失敗，也不催促。 */
+  if (focusLeft.length && evening && !lowMood)
+    add(5, `「${focusLeft[0].title}」還在今天裡。是卡住了，還是今天已經很滿？`, `「${focusLeft[0].title}」還沒完成，`);
+
+  /* 什麼都沒發生的日子。系統裡是空白，不代表你今天沒有活過。
+     只在接近一天結束時出現；心情很差的日子讓別的問題先上。 */
+  if (!doneToday.length && !habitsDone.length && !rested.length && evening && !lowMood)
+    add(5, '今天沒有勾掉什麼。那今天是怎麼過的？', '今天是這樣過的：');
+
+  return pool.sort((a, b) => a.rank - b.rank);
 }
 
 /* =================== 反思頁 =================== */
@@ -2718,10 +2778,16 @@ function vReflect(){
     <div class="moods" style="margin-top:7px">
       ${MOODS.map(m => `<button class="mood-btn ${ref.mood === m.v ? 'on' : ''}" data-act="mood" data-v="${m.v}" aria-label="${m.lb}">${m.e}<span>${m.lb}</span></button>`).join('')}
     </div>
-    ${(() => { const ps = todayPrompts(); return ps.length ? `<div class="lead-block">
-      <div class="lead-head">也許可以從這裡寫起</div>
-      ${ps.map(p => `<button class="lead-row" data-act="prompt-lead" data-p="${esc(p.lead)}"><span class="grow">${esc(p.q)}</span><span class="lead-arrow">›</span></button>`).join('')}
-    </div>` : ''; })()}
+    ${(() => {
+      const ps = todayPrompts();
+      if (!ps.length) return '';
+      const p = ps[(ui.promptIdx || 0) % ps.length];
+      return `<div class="lead-block">
+        <div class="lead-head">也許可以從這裡寫起</div>
+        <button class="lead-row" data-act="prompt-lead" data-p="${esc(p.lead)}"><span class="grow">${esc(p.q)}</span><span class="lead-arrow">›</span></button>
+        ${ps.length > 1 ? '<button class="lead-swap" data-act="prompt-swap">換一題</button>' : ''}
+      </div>`;
+    })()}
     <div class="prompt-chips">
       ${PROMPTS.map(p => `<button class="chip" data-act="prompt" data-p="${esc(p)}">${p}</button>`).join('')}
     </div>
@@ -3799,6 +3865,7 @@ const actions = {
     if (!r.mood && !(r.text || '').trim()) delete state.reflections[k];
     save(); render(); flashSaved();
   },
+  'prompt-swap': () => { ui.promptIdx = (ui.promptIdx || 0) + 1; render(); },
   'prompt-lead': d => {
     const ta = $('#refText'); if (!ta) return;
     if (d.p){
