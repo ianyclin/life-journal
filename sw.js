@@ -35,12 +35,15 @@ self.addEventListener('fetch', e => {
   try { url = new URL(req.url); } catch (err) { return; }
   if (url.origin !== location.origin) return;
 
-  const isNav = req.mode === 'navigate';
-  const key = isNav ? SHELL_KEY : req;
+  /* 只有「開啟手帳本身」才對應到 shell。同一個網域下若還放了別的檔案
+     (例如 cover.svg),直接開它時就該拿到那個檔案,而不是手帳畫面。 */
+  const isShellNav = req.mode === 'navigate'
+    && (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html'));
+  const key = isShellNav ? SHELL_KEY : req;
 
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
-    const cached = await cache.match(key) || (isNav ? await cache.match('./') : null);
+    const cached = await cache.match(key) || (isShellNav ? await cache.match('./') : null);
     const fresh = fetch(req).then(res => {
       if (res && res.ok && res.type === 'basic') cache.put(key, res.clone()).catch(() => {});
       return res;
@@ -53,7 +56,7 @@ self.addEventListener('fetch', e => {
     if (res) return res;
 
     /* 離線又沒快取:至少讓導覽請求拿到手帳本體 */
-    if (isNav) {
+    if (isShellNav) {
       const shell = await cache.match(SHELL_KEY) || await cache.match('./');
       if (shell) return shell;
     }
