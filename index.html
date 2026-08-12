@@ -257,8 +257,9 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
   margin-top:12px;padding-top:11px;border-top:1px dashed var(--line);
   font-family:var(--serif);font-size:14.5px;color:var(--ink2);line-height:1.75;
 }
-.greet-quote::before{content:"「";color:var(--acc);font-weight:700}
-.greet-quote::after{content:"」";color:var(--acc);font-weight:700}
+.greet-quote .qt::before{content:"「";color:var(--acc);font-weight:700}
+.greet-quote .qt::after{content:"」";color:var(--acc);font-weight:700}
+.quote-by{display:block;margin-top:6px;font-family:var(--sans);font-size:12px;color:var(--ink3);letter-spacing:.03em}
 
 /* 待辦項目 */
 .t-item{display:flex;align-items:center;gap:11px;padding:10px 2px;border-bottom:1px dashed var(--line-soft)}
@@ -663,6 +664,20 @@ const QUOTES = [
   '別人的進度,不是你的時鐘。',
   '有些告別,不需要立刻想通。',
   '沒被看見的事,也真實發生過。',
+  '有些事,現在還沒有答案。',
+  /* 佛教概念的白話轉述與有出處的引用。
+     出處經過查證:聖嚴法師兩句見法鼓山官方(四它、108 自在語);
+     一行禪師「我已到了,已到家了」採梅村官方繁中版本,不用自己重譯的說法。
+     刻意不收「痛是難免的,苦是可以選擇的」——《箭經》講的是不要在痛上再加
+     第二支箭,不是說受苦的人可以選擇不苦;那句容易變成「你還在苦是你自己選的」。 */
+  '沒有一種感覺會永遠留著,好的壞的都是。',
+  '放下不是失去,是不再被綁著。',
+  '此刻已經足夠。',
+  {t:'洗碗的時候,就只是洗碗。', by:'一行禪師'},
+  {t:'吸氣,知道自己在吸氣。', by:'一行禪師'},
+  {t:'弦太緊、太鬆,都彈不出聲音。', by:'佛陀的琴弦之喻'},
+  {t:'面對它、接受它、處理它、放下它。', by:'聖嚴法師'},
+  {t:'需要的不多,想要的太多。', by:'聖嚴法師'},
   /* 中斷之後 */
   '斷掉了沒關係,接回來就好。',
   '中斷不等於失敗,只是中間休息了一下。',
@@ -708,7 +723,8 @@ const QUOTES_NIGHT = [
   '不必檢討今天,看見它就好。',
   '睡前那幾分鐘,是留給自己的。',
   '明天的事,交給明天的你。',
-  '今天沒有答案,也可以先到這裡。'
+  '今天沒有答案,也可以先到這裡。',
+  {t:'我已到了,已到家了。', by:'一行禪師'}
 ];
 const MOODS = [
   {v:1, e:'😣', lb:'糟糕', c:'var(--m1)'},
@@ -816,6 +832,12 @@ const dayQuote = () => {
   const pool = d.getHours() >= 18 ? QUOTES_NIGHT : QUOTES;
   return pool[n % pool.length];
 };
+/* 箴言可以是純字串,也可以是 {t, by}。有出處的才顯示出處,沒有的就不硬掛名字。 */
+function quoteHTML(q){
+  const text = typeof q === 'string' ? q : q.t;
+  const by = typeof q === 'string' ? '' : (q.by || '');
+  return `<span class="qt">${esc(text)}</span>${by ? `<span class="quote-by">— ${esc(by)}</span>` : ''}`;
+}
 const greeting = () => { const h = new Date().getHours(); if (h < 5) return '夜深了,記得休息'; if (h < 11) return '早安,新的一天'; if (h < 14) return '午安,保持節奏'; if (h < 18) return '下午好,繼續加油'; return '晚安,回顧一下今天吧'; };
 /* 搜尋命中的字highlight。先轉義再包 <mark>,順序反過來就會開一個 XSS 的門。
    大小寫轉換若讓長度變了(某些語系會),寧可不標色也不要切錯位置。 */
@@ -1846,7 +1868,7 @@ function vToday(){
       <button class="icon-btn" data-act="global-search" aria-label="搜尋人生手帳">⌕</button>
       <button class="icon-btn" data-act="settings" aria-label="設定與備份">${ICONS.gear}</button>
     </div>
-    <div class="greet-quote">${dayQuote()}</div>
+    <div class="greet-quote">${quoteHTML(dayQuote())}</div>
   </div>
 
   ${!state.settings.onboardingDismissed&&(starter||meaningful<4)?`<div class="card">
