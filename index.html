@@ -419,6 +419,16 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .r-hist .tx{font-size:14px;color:var(--ink2);margin-top:1px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;word-break:break-word}
 .save-ind{font-size:12px;color:var(--sage);opacity:0;transition:opacity .3s}
 .save-ind.show{opacity:1}
+.lead-block{margin:12px 0 4px;padding:11px 12px;border-radius:12px;background:var(--card2);border:1px solid var(--line-soft)}
+.lead-head{font-size:11.5px;color:var(--ink3);letter-spacing:.06em;margin-bottom:5px}
+.lead-row{
+  width:100%;display:flex;align-items:flex-start;gap:8px;text-align:left;
+  padding:8px 2px;font-size:13.5px;color:var(--ink2);line-height:1.65;
+  border-bottom:1px dashed var(--line-soft);
+}
+.lead-row:last-child{border-bottom:none}
+.lead-row:active{opacity:.6}
+.lead-arrow{flex:none;color:var(--ink3)}
 .prompt-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin:9px 0 2px;scrollbar-width:none}
 .prompt-chips::-webkit-scrollbar{display:none}
 .prompt-chips .chip{flex:none;font-size:12.5px;padding:6px 11px}
@@ -2610,6 +2620,70 @@ function randomPastReflection(seed){
 }
 const hashInt = s => { let h = 2166136261; for (let i=0;i<s.length;i++){ h ^= s.charCodeAt(i); h = Math.imul(h,16777619); } return h|0; };
 
+/* ===== 從今天的紀錄長出來的書寫提示 =====
+   Apple Journal 的智慧建議是看照片與運動；這裡看的是你自己的待辦、習慣、目標與心情 ——
+   三種資料剛好都在同一本手帳裡，這是別的 App 給不了的。
+   全部在本機算，不連任何服務。原則：用真正的名字說話，而且沒做到的時候不責備。 */
+function todayPrompts(){
+  const tk = todayKey();
+  const ref = state.reflections[tk] || {};
+  const written = (ref.text || '').trim();
+  const doneToday = state.tasks.filter(t => t.done && t.doneAt && dkey(new Date(t.doneAt)) === tk);
+  const focus = focusTasks();
+  const focusDone = focus.filter(t => t.done);
+  const focusLeft = focus.filter(t => !t.done);
+  const habitsDone = state.habits.filter(h => isChecked(h.id, tk));
+  const rested = state.habits.filter(h => isRest(h.id, tk));
+  const goalTask = doneToday.find(t => t.goalId && goalById(t.goalId));
+  const yesterday = state.reflections[dkey(addDays(new Date(), -1))];
+  const streak = reflectStreak();
+  const hour = new Date().getHours();
+  const out = [];
+  const add = (q, lead) => out.push({q, lead});
+
+  /* 先講具體發生過的事，用名字 */
+  if (focusDone.length)
+    add(`今天完成了「${focusDone[0].title}」。做完的那一刻，心裡是什麼感覺？`, `今天完成了「${focusDone[0].title}」，`);
+
+  if (goalTask)
+    add(`你往「${goalById(goalTask.goalId).title}」走了一步。這個方向現在感覺如何？`, `離「${goalById(goalTask.goalId).title}」又近了一點，`);
+
+  if (focusLeft.length && hour >= 15)
+    add(`「${focusLeft[0].title}」今天沒走到。是卡在哪裡，還是今天本來就滿了？`, `「${focusLeft[0].title}」今天沒完成，`);
+
+  if (habitsDone.length)
+    add(`今天有「${habitsDone[0].name}」。它現在對你來說是負擔，還是喘口氣的時間？`, `今天做了「${habitsDone[0].name}」，`);
+
+  if (rested.length)
+    add(`今天讓「${rested[0].name}」休息了。這樣的一天，過起來還好嗎？`, `今天讓「${rested[0].name}」休息，`);
+
+  if (doneToday.length >= 5)
+    add(`今天做完了 ${doneToday.length} 件事。哪一件是你真的想做，而不只是該做的？`, '今天做了很多事，其中');
+
+  /* 什麼都沒發生的日子 —— 這種時候最需要溫柔 */
+  /* 標休息也是一種決定，不算「什麼都沒發生」 */
+  if (!doneToday.length && !habitsDone.length && !rested.length)
+    add('今天沒有勾掉什麼。那今天是怎麼過的？', '今天是這樣過的：');
+
+  /* 心情已經選了，但還沒寫字 */
+  if (ref.mood && !written){
+    const m = MOODS.find(x => x.v === ref.mood);
+    if (m) add(`你把今天標成「${m.lb}」。是什麼讓它變成這樣？`, `今天的心情是${m.lb}，因為`);
+  }
+
+  /* 回頭看的線索 */
+  if (yesterday && (yesterday.text || '').trim() && !written)
+    add(`昨天你寫了「${(yesterday.text || '').trim().split('\n')[0].slice(0, 12)}…」。今天呢？`, '');
+
+  if (streak >= 3)
+    add(`已經連續 ${streak} 天寫下來了。這幾天裡，最想記得的是哪一件？`, '這幾天裡我最想記得的是');
+
+  if (new Date().getDay() === 0)
+    add('這週要結束了。回頭看，哪一天你想再過一次？', '這週我想再過一次的那天是');
+
+  return out.slice(0, 3);
+}
+
 /* =================== 反思頁 =================== */
 function vReflect(){
   const tk = todayKey();
@@ -2644,6 +2718,10 @@ function vReflect(){
     <div class="moods" style="margin-top:7px">
       ${MOODS.map(m => `<button class="mood-btn ${ref.mood === m.v ? 'on' : ''}" data-act="mood" data-v="${m.v}" aria-label="${m.lb}">${m.e}<span>${m.lb}</span></button>`).join('')}
     </div>
+    ${(() => { const ps = todayPrompts(); return ps.length ? `<div class="lead-block">
+      <div class="lead-head">也許可以從這裡寫起</div>
+      ${ps.map(p => `<button class="lead-row" data-act="prompt-lead" data-p="${esc(p.lead)}"><span class="grow">${esc(p.q)}</span><span class="lead-arrow">›</span></button>`).join('')}
+    </div>` : ''; })()}
     <div class="prompt-chips">
       ${PROMPTS.map(p => `<button class="chip" data-act="prompt" data-p="${esc(p)}">${p}</button>`).join('')}
     </div>
@@ -3720,6 +3798,16 @@ const actions = {
     r.updatedAt = Date.now();
     if (!r.mood && !(r.text || '').trim()) delete state.reflections[k];
     save(); render(); flashSaved();
+  },
+  'prompt-lead': d => {
+    const ta = $('#refText'); if (!ta) return;
+    if (d.p){
+      ta.value += (ta.value.trim() ? '\n' : '') + d.p;
+      ta.dispatchEvent(new Event('input', {bubbles:true}));
+      autoGrow(ta);
+    }
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   },
   'prompt': d => {
     const ta = $('#refText'); if (!ta) return;
