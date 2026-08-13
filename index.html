@@ -665,18 +665,18 @@ body.privacy-blur #app{filter:blur(18px)}
 .set-back:active{opacity:.6}
 
 /* 有新版時的提示。放在最上面、不擋操作，點一下才更新 */
-#updateBanner{
+#updateBanner,#multiTabBar{
   position:fixed;left:0;right:0;top:0;z-index:140;
   padding:calc(env(safe-area-inset-top) + 11px) 16px 11px;
   background:var(--sage-soft);border-bottom:1px solid var(--sage);color:var(--sage-deep);
   font-size:13.5px;line-height:1.6;display:flex;align-items:center;gap:10px;
 }
-#updateBanner .grow{flex:1;min-width:0}
-#updateBanner button{
+#updateBanner .grow,#multiTabBar .grow{flex:1;min-width:0}
+#updateBanner button,#multiTabBar button{
   flex:none;background:var(--sage);color:#fff;font-weight:650;font-size:13px;
   padding:6px 13px;border-radius:10px;
 }
-#updateBanner button.later{background:transparent;color:var(--sage-deep);padding:6px 4px;font-weight:500}
+#updateBanner button.later,#multiTabBar button:last-child{background:transparent;color:var(--sage-deep);padding:6px 4px;font-weight:500}
 
 /* 出事時的最後一道防線 */
 #errorBanner{
@@ -761,7 +761,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.2';
+const APP_VERSION = '1.3';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1459,14 +1459,52 @@ async function offerDataRescue(){
   openSheet(`<h2>找到資料異常</h2><p style="font-size:14px;color:var(--ink2);line-height:1.7">目前主要資料無法完整讀取。${pendingRescueRaw?'已找到最近的安全快照，可以嘗試復原。':'沒有找到可用的裝置快照，請使用先前匯出的備份檔還原。'}</p><div class="sheet-actions">${pendingRescueRaw?'<button class="btn" data-act="rescue-data">復原最近快照</button>':'<button class="btn" data-act="import-file">選擇備份檔</button>'}</div>`);
 }
 
-let saveT = null;
+/* dirty 表示「記憶體裡有還沒寫進 localStorage 的字」。
+   關鍵在於：沒有 dirty 就絕對不要寫。
+   否則在電腦上多開一個分頁時，舊分頁關閉的那一刻會把它記憶體裡的舊 state
+   整包蓋回去，新分頁剛寫的東西就這樣不見了 —— 資料只存在本機的 App，
+   這是唯一一個會自己吃掉紀錄的洞。 */
+let saveT = null, dirty = false;
 function save(){
+  dirty = true;
   clearTimeout(saveT);
-  saveT = setTimeout(() => {
-    store.save(state);
-    /* 連結了檔案就順手寫回去，但有最短間隔，不會每打一個字就動硬碟 */
-    if (typeof fsBackup !== 'undefined' && fsBackup.linked()) fsBackup.write(false);
-  }, 120);
+  saveT = setTimeout(flushSave, 120);
+}
+function flushSave(quick){
+  clearTimeout(saveT);
+  if (!dirty) return;
+  store.save(state);
+  dirty = false;
+  /* 連結了檔案就順手寫回去，但有最短間隔，不會每打一個字就動硬碟 */
+  if (typeof fsBackup !== 'undefined' && fsBackup.linked()) fsBackup.write(!!quick);
+}
+/* 另一個視窗寫了東西：自己這邊沒有未存的字就直接跟上，兩邊自然收斂；
+   有未存的字才出聲問，不擅自丟掉任何一邊。 */
+window.addEventListener('storage', e => {
+  /* 聽 checksum 而不是資料本身：store.save() 先寫資料、後寫 checksum，
+     在資料那個事件的當下 checksum 還是舊的，比對一定不過。 */
+  if (e.key !== KEY + '_checksum' || !e.newValue) return;
+  if (dirty){ showMultiTabBanner(); return; }
+  let m = null;
+  try{
+    const raw = localStorage.getItem(KEY);
+    /* 這裡刻意不走 store.load()：它對不上就會掛起 loadError 叫出救援畫面，
+       但這裡對不上多半只是兩個 key 還沒寫完，下一個事件就會補上。 */
+    if (!raw || hashText(raw) !== e.newValue) return;
+    m = migrate(JSON.parse(raw));
+  }catch(err){ return; }
+  if (!m) return;
+  state = Object.assign(defaultState(), m);
+  render();
+});
+function showMultiTabBanner(){
+  if ($('#multiTabBar')) return;
+  const bar = document.createElement('div');
+  bar.id = 'multiTabBar';
+  bar.innerHTML = `<span class="grow">這本手帳在另一個視窗也開著，那邊剛剛有新的紀錄。</span>
+    <button data-act="multitab-reload">載入那邊的</button>
+    <button data-act="multitab-keep">保留這邊的</button>`;
+  document.body.appendChild(bar);
 }
 window.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'hidden'){
@@ -1476,10 +1514,9 @@ window.addEventListener('visibilitychange', () => {
     if (el) el.innerHTML = quoteHTML(dayQuote());
     return;
   }
-  store.save(state);
-  if (typeof fsBackup !== 'undefined' && fsBackup.linked()) fsBackup.write(true);
+  flushSave(true);
 });
-window.addEventListener('pagehide', () => store.save(state));
+window.addEventListener('pagehide', () => flushSave(true));
 
 /* =================== UI 狀態與路由 =================== */
 const ui = {
@@ -1501,7 +1538,11 @@ const TABS = [
   {id:'reflect', lb:'反思', ic:'reflect'},
   {id:'goal', lb:'目標', ic:'goal'}
 ];
-function go(tab){ if (tab === 'today' && ui.tab !== 'today') nextQuote(); ui.tab = tab; if (tab !== 'today') ui.layoutEdit = false; if (tab === 'habit') { ui.hmOffset = 0; ui.hmSel = todayKey(); } render(); window.scrollTo(0, 0); }
+function go(tab){
+  /* 換頁就把新增用的領域選擇歸零。待辦頁的 chips 一直看得見，同一頁連續新增沿用很方便；
+     但今日頁的 chips 是收合的，沿用等於在使用者看不到的地方替他選了分類。 */
+  if (tab !== ui.tab) ui.addArea = null;
+  if (tab === 'today' && ui.tab !== 'today') nextQuote(); ui.tab = tab; if (tab !== 'today') ui.layoutEdit = false; if (tab === 'habit') { ui.hmOffset = 0; ui.hmSel = todayKey(); } render(); window.scrollTo(0, 0); }
 
 /* =================== 彈窗 / 確認 =================== */
 function openSheet(html, cls){
@@ -1601,7 +1642,7 @@ function habitTrendHTML(h){
   const before = done.slice(0, half).reduce((a,b)=>a+b,0) / half;
   const dir = recent > before + .5 ? '慢慢變多了' : recent < before - .5 ? '最近少了一些，沒關係' : '維持著差不多的節奏';
   const bar = (n, cls) => `<i class="${cls||''}" style="height:${Math.max(5, n/top*100)}%"></i>`;
-  return `<div class="trend" role="img" aria-label="過去 ${done.length} 週每週次數依序為 ${done.join('、')},本週目前 ${current} 次">
+  return `<div class="trend" role="img" aria-label="過去 ${done.length} 週每週次數依序為 ${done.join('、')}，本週目前 ${current} 次">
       ${done.map(n=>bar(n)).join('')}${bar(current,'now')}
     </div>
     <div class="trend-lb"><span>${done.length} 週前</span><span>${dir}</span><span>本週進行中</span></div>`;
@@ -2083,7 +2124,7 @@ function timelineSheet(){
       <button class="chip ${year === 'all' ? 'on' : ''}" data-act="tl-year" data-v="all">全部</button>
       ${years.map(y => `<button class="chip ${year === y ? 'on' : ''}" data-act="tl-year" data-v="${y}">${y}</button>`).join('')}
     </div>` : ''}
-    ${all.length ? `<div class="hint" style="margin-bottom:6px">${year === 'all' ? '走過的痕跡' : `${year} 年`},共 ${all.length} 件。${year !== 'all' && years.length > 1 ? ` <button class="link" data-act="year-review" data-y="${year}" style="background:none;border:none;padding:0">看 ${year} 年度回顧 ›</button>` : ''}</div>
+    ${all.length ? `<div class="hint" style="margin-bottom:6px">${year === 'all' ? '走過的痕跡' : `${year} 年`}，共 ${all.length} 件。${year !== 'all' && years.length > 1 ? ` <button class="link" data-act="year-review" data-y="${year}" style="background:none;border:none;padding:0">看 ${year} 年度回顧 ›</button>` : ''}</div>
     <div class="global-results" style="max-height:64dvh">${rows}
       ${all.length > list.length ? `<button class="btn plain full sm" style="margin:10px 0 4px" data-act="tl-more">看更早的痕跡</button>` : '<div class="hint" style="text-align:center;padding:10px 0 4px">到這裡就是最初了。</div>'}
     </div>`
@@ -2473,7 +2514,7 @@ function vToday(){
     </button>
   </div>` : '';
 
-  const backupNudge = needsBackup?`<div class="card pad-s"><div class="row"><span style="font-size:22px">☁️</span><span class="grow" style="font-size:13.5px;color:var(--ink2)">紀錄已累積一段時間。花一分鐘備份，會更安心。</span><button class="s-today" data-act="settings">去備份</button></div></div>`:'';
+  const backupNudge = needsBackup?`<div class="card pad-s"><div class="row"><span style="font-size:22px">☁️</span><span class="grow" style="font-size:13.5px;color:var(--ink2)">已經有 ${meaningful} 筆紀錄了。花一分鐘備份，會更安心。</span><button class="s-today" data-act="settings">去備份</button></div></div>`:'';
 
   B.reflection = `<div class="card pad-s" id="reflectionCard">
     <div class="sec-title">${phase==='夜晚'?'現在，替今天收尾':'今晚的反思'}<span class="right">${rStreak > 0 ? `已連續 ${rStreak} 天` : ''}</span></div>
@@ -3237,7 +3278,7 @@ function settingsSection(id){
 
   if (id === 'quotes'){
     body = `${back('箴言')}
-    <div class="hint" style="margin-bottom:7px">首頁那句話要從哪些句庫抽？可以複選；每十分鐘換一句，入夜之後每一包都會換成適合收尾的話。</div>
+    <div class="hint" style="margin-bottom:7px">首頁那句話要從哪些句庫抽？可以複選；每次回到今日頁就換一句，入夜之後每一包都會換成適合收尾的話。</div>
     <div class="seg">
       ${QUOTE_PACKS.map(p => `<button class="chip ${packOn(p.id) ? 'on' : ''}" data-act="quote-pack" data-id="${p.id}">${p.lb}<span class="filter-count">${p.day.length + p.night.length}</span></button>`).join('')}
     </div>
@@ -3921,6 +3962,9 @@ const actions = {
       const dt = ($('#qaDate') && $('#qaDate').value) || ui.addDate || '';
       if (!dt || dt <= todayKey()){ toast('選一個之後的日期'); const el = $('#qaDate'); if (el) el.focus(); return; }
       addTask({title:v, bucket:'later', area:ui.addArea, dueDate:dt});
+      /* 建立當下就套用「剩一週進本週」那條規則。不然使用者會看到它先掉進「之後」，
+         過一下又自己跑到「本週」，像是自己眼花。 */
+      promoteScheduled(todayKey());
       save(); render(); toast(`已預約 ${dueLabel(dt)}`);
     } else {
       addTask({title:v, bucket:ui.addBucket || 'today', area:ui.addArea});
@@ -4160,6 +4204,8 @@ const actions = {
     r.mood = r.mood === Number(d.v) ? null : Number(d.v);
     r.updatedAt = Date.now(); save(); refSheet(d.k); renderSoon();
   },
+  'multitab-reload': () => { dirty = false; location.reload(); },
+  'multitab-keep': () => { const b = $('#multiTabBar'); if (b) b.remove(); flushSave(); toast('已保留這個視窗的紀錄'); },
   'hist-more': () => { ui.histLimit += 20; render(); },
   'hist-toggle': () => { ui.histOpen = !ui.histOpen; render(); },
   'ref-save': () => {
