@@ -1,20 +1,20 @@
 /* 人生手帳 Service Worker
-   只負責一件事:讓這本手帳在沒有網路、甚至飛航模式下也打得開。
-   策略是「先給快取、背景更新」——開啟永遠是瞬間的,新版會在下一次開啟套用。
-   資料本身不經過這裡:所有紀錄都在 localStorage / IndexedDB,與快取無關。 */
+   只負責一件事：讓這本手帳在沒有網路、甚至飛航模式下也打得開。
+   策略是「先給快取、背景更新」——開啟永遠是瞬間的，新版會在下一次開啟套用。
+   資料本身不經過這裡：所有紀錄都在 localStorage / IndexedDB，與快取無關。 */
 'use strict';
 
 const VERSION = 'v2';
 const CACHE = `life-journal-${VERSION}`;
 const SHELL = ['./index.html', './'];
-/* 導覽請求一律對應到這一把鑰匙。捷徑會帶 ?tab=… 進來,如果照著網址各存一份,
+/* 導覽請求一律對應到這一把鑰匙。捷徑會帶 ?tab=… 進來，如果照著網址各存一份，
    舊版本就會躲在某個參數組合裡一直復活 —— 手帳永遠只有一份。 */
 const SHELL_KEY = './index.html';
 
 self.addEventListener('install', e => {
   e.waitUntil((async () => {
     const cache = await caches.open(CACHE);
-    /* 有些主機不接受目錄形式的請求,少一個也不該讓安裝整個失敗 */
+    /* 有些主機不接受目錄形式的請求，少一個也不該讓安裝整個失敗 */
     await Promise.all(SHELL.map(u => cache.add(u).catch(() => {})));
     await self.skipWaiting();
   })());
@@ -36,7 +36,7 @@ self.addEventListener('fetch', e => {
   if (url.origin !== location.origin) return;
 
   /* 只有「開啟手帳本身」才對應到 shell。同一個網域下若還放了別的檔案
-     (例如 cover.svg),直接開它時就該拿到那個檔案,而不是手帳畫面。 */
+     （例如 cover.svg），直接開它時就該拿到那個檔案，而不是手帳畫面。 */
   const isShellNav = req.mode === 'navigate'
     && (url.pathname.endsWith('/') || url.pathname.endsWith('/index.html'));
   const key = isShellNav ? SHELL_KEY : req;
@@ -58,18 +58,18 @@ self.addEventListener('fetch', e => {
       return res;
     }).catch(() => null);
 
-    /* 有快取就先回快取,順便在背景把新版存起來 */
+    /* 有快取就先回快取，順便在背景把新版存起來 */
     if (cached) { e.waitUntil(fresh); return cached; }
 
     const res = await fresh;
     if (res) return res;
 
-    /* 離線又沒快取:至少讓導覽請求拿到手帳本體 */
+    /* 離線又沒快取：至少讓導覽請求拿到手帳本體 */
     if (isShellNav) {
       const shell = await cache.match(SHELL_KEY) || await cache.match('./');
       if (shell) return shell;
     }
-    return new Response('離線中,而且這個資源還沒有被快取。', {
+    return new Response('離線中，而且這個資源還沒有被快取。', {
       status: 503,
       headers: {'Content-Type': 'text/plain;charset=utf-8'}
     });
@@ -91,7 +91,7 @@ function notifyClients(){
 self.addEventListener('message', e => { if (e.data === 'skip-waiting') self.skipWaiting(); });
 
 /* ===== 每晚提醒 =====
-   點通知就直接打開反思頁;已經有開著的視窗就切過去,不再開一個新的。 */
+   點通知就直接打開反思頁；已經有開著的視窗就切過去，不再開一個新的。 */
 self.addEventListener('notificationclick', e => {
   e.notification.close();
   const url = (e.notification.data && e.notification.data.url) || './';
@@ -108,19 +108,19 @@ self.addEventListener('notificationclick', e => {
   })());
 });
 
-/* Android / 桌面 Chrome 才有的背景定期同步。手帳沒開著時也提醒得到;
-   iOS 目前沒有這個能力,那邊只能靠開著的分頁,設定頁已經誠實說明。 */
+/* Android / 桌面 Chrome 才有的背景定期同步。手帳沒開著時也提醒得到；
+   iOS 目前沒有這個能力，那邊只能靠開著的分頁，設定頁已經誠實說明。 */
 self.addEventListener('periodicsync', e => {
   if (e.tag === 'nightly-nudge') e.waitUntil(nightlyNudge());
 });
 
-/* 直接讀 IndexedDB 裡的最新快照,判斷今天是不是已經寫過了 —— 寫過就不打擾 */
+/* 直接讀 IndexedDB 裡的最新快照，判斷今天是不是已經寫過了 —— 寫過就不打擾 */
 function latestSnapshot(){
   return new Promise(resolve => {
     let done = false;
     const finish = v => { if (!done){ done = true; resolve(v); } };
     try{
-      /* 不指定版本:主程式會把這個 DB 升到 v2(多一個 handles store),
+      /* 不指定版本：主程式會把這個 DB 升到 v2（多一個 handles store）,
          這裡若寫死舊版號會直接撞 VersionError。 */
       const q = indexedDB.open('life_journal_rescue');
       q.onerror = () => finish(null);
@@ -153,7 +153,7 @@ async function nightlyNudge(){
       if (now.getHours() * 60 + now.getMinutes() < (hh || 0) * 60 + (mm || 0)) return;  /* 還沒到時間 */
     }
     await self.registration.showNotification('人生手帳', {
-      body:'替今天寫下一句話,只要一分鐘。',
+      body:'替今天寫下一句話，只要一分鐘。',
       tag:'life-journal-nightly',
       data:{url:'./?tab=reflect'}
     });
