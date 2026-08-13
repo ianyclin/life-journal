@@ -1192,26 +1192,18 @@ const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); r
 const todayKey = () => dkey(new Date());
 const fmtMD = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.getDate()}日`; };
 const fmtFull = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.getDate()}日 · 週${WD[d.getDay()]}`; };
-/* 每十分鐘換一句。用「從 1970 年起算的第幾個十分鐘」當索引，所以同一個時段
-   不論重整幾次都是同一句 —— 換頁不會跳字，時間到了才換。 */
-const QUOTE_SLOT_MS = 10 * 60 * 1000;
-const quoteSlot = () => Math.floor(Date.now() / QUOTE_SLOT_MS);
+/* 每次「走到今日頁」換一句 —— 開 App、從別的分頁切回來、從背景回到前景，都算一次。
+   刻意不用亂數而是往前挪一格：亂數會連續抽到同一句，往前挪會把整包走完一輪才重來。
+   索引存在設定裡，所以關掉再打開會接著往下，不會每次開都是同一句。
+   只在「走到」的那一刻挪，不是每次 render 都挪 —— 不然在今日頁勾一件事那句話就跟著跳。 */
 const dayQuote = () => {
   const pool = activeQuotes(new Date().getHours() >= 18);
-  return pool[(quoteSlot() + (ui.quoteBump || 0)) % pool.length];
+  return pool[(state.settings.quoteIdx || 0) % pool.length];
 };
-/* 只換那一句，不整頁重畫 —— 使用者可能正在打字。 */
-let quoteTickSlot = quoteSlot();
-setInterval(() => {
-  const now = quoteSlot();
-  if (now === quoteTickSlot) return;
-  const el = document.querySelector('.greet-quote .qt-tap');
-  /* 換到別的分頁時那句話本來就會重畫；螢幕沒亮著就先不動，等回來再換 */
-  if (ui.tab !== 'today'){ quoteTickSlot = now; return; }
-  if (!el || document.visibilityState !== 'visible') return;
-  quoteTickSlot = now;
-  el.innerHTML = quoteHTML(dayQuote());
-}, 20000);
+function nextQuote(){
+  state.settings.quoteIdx = ((state.settings.quoteIdx || 0) + 1) % 100000;
+  save();
+}
 /* 箴言可以是純字串，也可以是 {t, by}。有出處的才顯示出處，沒有的就不硬掛名字。 */
 function quoteHTML(q){
   const text = fillTerms(typeof q === 'string' ? q : q.t);   /* 先代入稱呼，再轉義 */
@@ -1397,7 +1389,7 @@ const defaultState = () => ({
     todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper',autoClearDone:30}
 });
 const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
-  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper',autoClearDone:30});
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper',autoClearDone:30,quoteIdx:0});
 /* 舊版資料升級：保留既有紀錄，補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
@@ -1447,6 +1439,7 @@ function migrate(s){
   if (!Array.isArray(s.settings.mutedQuotes)) s.settings.mutedQuotes = [];
   if (!['paper','sea','forest','rose'].includes(s.settings.theme)) s.settings.theme = 'paper';
   if (![0, 30, 100].includes(s.settings.autoClearDone)) s.settings.autoClearDone = 30;
+  if (!Number.isFinite(s.settings.quoteIdx)) s.settings.quoteIdx = 0;
   /* 釘選最多兩個：舊備份或手動改過的資料進來時，多的直接取消 */
   let pins = 0;
   s.goals.forEach(g => { g.pinned = !!g.pinned && !g.done && ++pins <= 2; });
@@ -1476,7 +1469,13 @@ function save(){
   }, 120);
 }
 window.addEventListener('visibilitychange', () => {
-  if (document.visibilityState !== 'hidden') return;
+  if (document.visibilityState !== 'hidden'){
+    /* 從背景回來 = 重新打開來用，換一句。只換那一句、不整頁重畫，正在打的字不會被吃掉。 */
+    nextQuote();
+    const el = ui.tab === 'today' && document.querySelector('.greet-quote .qt-tap');
+    if (el) el.innerHTML = quoteHTML(dayQuote());
+    return;
+  }
   store.save(state);
   if (typeof fsBackup !== 'undefined' && fsBackup.linked()) fsBackup.write(true);
 });
@@ -1488,7 +1487,7 @@ const ui = {
   addArea:null, addBucket:'today', todoArea:'all', todoSort:'custom', todoDir:'asc', layoutEdit:false, tlLimit:60,
   todoQuery:'', refQuery:'', refMood:'all', emojiGroup:'推薦', multi:false, selected:[],
   reviewScope:'week', habitTrend:false,
-  histOpen:false, refDone:null, wrOpen:null, quoteBump:0, goalOpen:[]
+  histOpen:false, refDone:null, wrOpen:null, goalOpen:[]
 };
 Object.assign(ui,state.settings.viewPrefs||{});
 function persistViewPrefs(){
@@ -1502,7 +1501,7 @@ const TABS = [
   {id:'reflect', lb:'反思', ic:'reflect'},
   {id:'goal', lb:'目標', ic:'goal'}
 ];
-function go(tab){ ui.tab = tab; if (tab !== 'today') ui.layoutEdit = false; if (tab === 'habit') { ui.hmOffset = 0; ui.hmSel = todayKey(); } render(); window.scrollTo(0, 0); }
+function go(tab){ if (tab === 'today' && ui.tab !== 'today') nextQuote(); ui.tab = tab; if (tab !== 'today') ui.layoutEdit = false; if (tab === 'habit') { ui.hmOffset = 0; ui.hmSel = todayKey(); } render(); window.scrollTo(0, 0); }
 
 /* =================== 彈窗 / 確認 =================== */
 function openSheet(html, cls){
@@ -4286,7 +4285,7 @@ const actions = {
   'update-later': () => { const el = document.getElementById('updateBanner'); if (el) el.hidden = true; },
   'quote-menu': () => quoteMenuSheet(),
   'quote-bump': () => {
-    ui.quoteBump = (ui.quoteBump || 0) + 1;
+    nextQuote();
     const inSheet = $('#sheetRoot').children.length > 0;
     render();
     if (inSheet) quoteMenuSheet();   /* 從彈窗按的就更新彈窗，從首頁按的就只換首頁那句 */
@@ -4781,6 +4780,7 @@ try{
   if(location.search)history.replaceState(null,'',location.pathname+location.hash);
 }catch(e){}
 ensureRecurringTasks(todayKey());promoteScheduled(todayKey());autoClearDone();
+nextQuote();   /* 每次打開就是新的一句 */
 if(!store.loadError){
   if(state.settings.lastAutoBackupDay!==todayKey()){store.autoBackup(state);state.settings.lastAutoBackupDay=todayKey();}
   store.save(state);   /* 把升級後的結構寫回，避免舊格式殘留 */
