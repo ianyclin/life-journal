@@ -644,6 +644,20 @@ body.privacy-blur #app{filter:blur(18px)}
 .set-back{color:var(--acc);font-size:14px;font-weight:600;padding:2px 0}
 .set-back:active{opacity:.6}
 
+/* 有新版時的提示。放在最上面、不擋操作，點一下才更新 */
+#updateBanner{
+  position:fixed;left:0;right:0;top:0;z-index:140;
+  padding:calc(env(safe-area-inset-top) + 11px) 16px 11px;
+  background:var(--sage-soft);border-bottom:1px solid var(--sage);color:var(--sage-deep);
+  font-size:13.5px;line-height:1.6;display:flex;align-items:center;gap:10px;
+}
+#updateBanner .grow{flex:1;min-width:0}
+#updateBanner button{
+  flex:none;background:var(--sage);color:#fff;font-weight:650;font-size:13px;
+  padding:6px 13px;border-radius:10px;
+}
+#updateBanner button.later{background:transparent;color:var(--sage-deep);padding:6px 4px;font-weight:500}
+
 /* 出事時的最後一道防線 */
 #errorBanner{
   position:fixed;left:0;right:0;top:0;z-index:150;
@@ -687,6 +701,7 @@ body.privacy-blur #app{filter:blur(18px)}
 </div>
 <nav id="tabbar" aria-label="主選單"><div class="inner" id="tabInner"></div></nav>
 <div id="sheetRoot"></div>
+<div id="updateBanner" hidden></div>
 <div id="errorBanner" hidden></div>
 <div id="toast" role="status"></div>
 <input type="file" id="importFile" accept=".json,application/json,text/plain" hidden>
@@ -3964,6 +3979,8 @@ const actions = {
   'haptics': d => { state.settings.haptics = d.v === '1'; save(); if(d.v==='1') buzz(12); settingsSection('look'); },
   /* 每日箴言：換一句、收起來、寫自己的 */
   'reload-app': () => location.reload(),
+  'update-now': () => location.reload(),
+  'update-later': () => { const el = document.getElementById('updateBanner'); if (el) el.hidden = true; },
   'quote-menu': () => quoteMenuSheet(),
   'quote-bump': () => {
     ui.quoteBump = (ui.quoteBump || 0) + 1;
@@ -4372,6 +4389,25 @@ if('serviceWorker' in navigator && location.protocol.indexOf('http')===0){
       });
     }).catch(()=>{});
 }
+/* Service Worker 抓到新版時會通知這裡。策略是「先給快取、背景更新」，
+   所以新版一定是下次開啟才生效 —— 與其要使用者記得重新整理兩次，不如讓手帳自己說。 */
+let updateShown = false;
+function showUpdateBanner(){
+  if (updateShown) return;
+  updateShown = true;
+  const el = document.getElementById('updateBanner');
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML = '<span class="grow">✨ 手帳有新版本了。</span>'
+    + '<button class="later" data-act="update-later">待會</button>'
+    + '<button data-act="update-now">立即更新</button>';
+}
+if ('serviceWorker' in navigator){
+  navigator.serviceWorker.addEventListener('message', e => {
+    if (e.data && e.data.type === 'shell-updated') showUpdateBanner();
+  });
+}
+
 /* 已經有資料的人直接請求長期保存；第一次使用的人只做靜默檢查，不打擾 */
 checkPersist(!!loadedState);
 /* 先確認檔案授權還在不在，設定頁才知道要不要提示重新授權 */
