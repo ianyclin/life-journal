@@ -44,8 +44,17 @@ self.addEventListener('fetch', e => {
   e.respondWith((async () => {
     const cache = await caches.open(CACHE);
     const cached = await cache.match(key) || (isShellNav ? await cache.match('./') : null);
-    const fresh = fetch(req).then(res => {
-      if (res && res.ok && res.type === 'basic') cache.put(key, res.clone()).catch(() => {});
+    const fresh = fetch(req).then(async res => {
+      if (!res || !res.ok || res.type !== 'basic') return res;
+      /* 手帳本體換新版時主動告訴頁面，讓它自己跳出提示 ——
+         不然使用者永遠要「重新整理兩次」才看得到，而沒有人會記得這件事。 */
+      if (isShellNav) {
+        const old = await cache.match(key);
+        await cache.put(key, res.clone());
+        if (old && changed(old, res)) notifyClients();
+      } else {
+        cache.put(key, res.clone()).catch(() => {});
+      }
       return res;
     }).catch(() => null);
 
@@ -66,6 +75,18 @@ self.addEventListener('fetch', e => {
     });
   })());
 });
+
+/* 比對是不是同一份檔案。優先看 ETag，其次 Last-Modified，最後看長度。 */
+function changed(a, b){
+  const tag = r => r.headers.get('etag') || r.headers.get('last-modified') || r.headers.get('content-length') || '';
+  const x = tag(a), y = tag(b);
+  return !!x && !!y && x !== y;
+}
+function notifyClients(){
+  self.clients.matchAll({type:'window', includeUncontrolled:true})
+    .then(list => list.forEach(c => c.postMessage({type:'shell-updated'})))
+    .catch(() => {});
+}
 
 self.addEventListener('message', e => { if (e.data === 'skip-waiting') self.skipWaiting(); });
 
