@@ -773,7 +773,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.12';
+const APP_VERSION = '1.13';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -3039,6 +3039,7 @@ function vReflect(){
     </div>
     <textarea class="field" id="refText" placeholder="${esc(todayPlaceholder())}" data-input="ref-text">${esc(ref.text || '')}</textarea>
     <div class="row" style="margin-top:9px">
+      <button class="btn sm plain" data-act="ref-newpara">＋ 再寫一段</button>
       <span class="save-state grow" id="saveState">寫下的字會自動儲存</span>
       <button class="btn sm" data-act="ref-save">封存</button>
     </div>`}
@@ -4331,6 +4332,19 @@ const actions = {
   'hm-habit': d => { ui.hmHabit = d.id || null; render(); },
   'hist-more': () => { ui.histLimit += 20; render(); },
   'hist-toggle': () => { ui.histOpen = !ui.histOpen; render(); },
+  /* 早上寫一段、晚上再寫一段。刻意不改資料結構 —— 一天仍然是一篇，
+     只是中間多一條時間分隔線。歷史、搜尋、匯出、合併全部不受影響。 */
+  'ref-newpara': () => {
+    const ta = $('#refText'); if (!ta) return;
+    const d = new Date();
+    const stamp = `—— ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const body = ta.value.replace(/\s+$/, '');
+    ta.value = (body ? body + '\n\n' : '') + stamp + '\n';
+    ta.dispatchEvent(new Event('input', {bubbles:true}));
+    autoGrow(ta);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  },
   'ref-save': () => {
     const ta = $('#refText');
     if (ta){
