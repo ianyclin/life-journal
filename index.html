@@ -769,7 +769,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.8';
+const APP_VERSION = '1.9';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1299,6 +1299,10 @@ const store = (() => {
   catch (e) { ok = false; }
   return {
     ok, loadError:false, saveError:false, bytes:0,
+    /* sig = 我們最後一次讀到或寫入的 checksum。存放區裡的 checksum 跟它不一樣，
+       就表示「有別的視窗（或凍結後被喚醒的另一個實例）寫過東西」。 */
+    sig:null,
+    peekSig(){ try{ return localStorage.getItem(KEY+'_checksum'); }catch(e){ return null; } },
     load(){
       if (!ok) return null;
       try{
@@ -1306,6 +1310,7 @@ const store = (() => {
         const sig=localStorage.getItem(KEY+'_checksum');
         if(sig&&sig!==hashText(raw)){this.loadError=true;return null;}
         this.bytes=raw.length;
+        this.sig=sig||hashText(raw);
         return JSON.parse(raw);
       }catch(e){this.loadError=true;return null;}
     },
@@ -1314,7 +1319,12 @@ const store = (() => {
       if (!ok) return;
       let raw;
       try{ raw = JSON.stringify(data); }catch(e){ return; }
-      const write = () => { localStorage.setItem(KEY,raw); localStorage.setItem(KEY+'_checksum',hashText(raw)); };
+      /* 動手寫之前先看一眼：如果存放區已經被別人換過，這一寫就會蓋掉對方的紀錄。
+         iOS 上首頁 App 與 Safari 分頁可以各自凍結好幾天，醒來時記憶體裡還是舊資料，
+         這時任何一個小動作都會把新的東西整包洗掉 —— 這是唯一會無聲吃掉紀錄的路徑。 */
+      const disk = this.peekSig();
+      if (this.sig && disk && disk !== this.sig){ onForeignWrite(); return; }
+      const write = () => { localStorage.setItem(KEY,raw); localStorage.setItem(KEY+'_checksum',hashText(raw)); this.sig=hashText(raw); };
       try{
         write(); this.bytes=raw.length;
         if(this.saveError){ this.saveError=false; updateStorageBanner(); }
@@ -1489,25 +1499,38 @@ function flushSave(quick){
   /* 連結了檔案就順手寫回去，但有最短間隔，不會每打一個字就動硬碟 */
   if (typeof fsBackup !== 'undefined' && fsBackup.linked()) fsBackup.write(!!quick);
 }
-/* 另一個視窗寫了東西：自己這邊沒有未存的字就直接跟上，兩邊自然收斂；
+/* 別處寫了東西：自己這邊沒有未存的字就直接跟上，兩邊自然收斂；
    有未存的字才出聲問，不擅自丟掉任何一邊。 */
+function onForeignWrite(){
+  if (dirty){ showMultiTabBanner(); return; }
+  adoptForeign();
+}
+function adoptForeign(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    const sig = localStorage.getItem(KEY + '_checksum');
+    /* 刻意不走 store.load()：它對不上就會掛起 loadError 叫出救援畫面，
+       但這裡對不上多半只是兩個 key 還沒寫完，下一次檢查就會補上。 */
+    if (!raw || (sig && hashText(raw) !== sig)) return;
+    const m = migrate(JSON.parse(raw));
+    if (!m) return;
+    state = Object.assign(defaultState(), m);
+    store.sig = sig || hashText(raw);
+    dirty = false;
+    render();
+  }catch(err){}
+}
+/* 醒來時主動比對一次。storage 事件只在「分頁活著」時才收得到，
+   被系統凍結那段時間發生的寫入不會補送，所以回到前景一定要自己再看一眼。 */
+function checkForeign(){ if (store.ok && store.sig && store.peekSig() !== store.sig) onForeignWrite(); }
 window.addEventListener('storage', e => {
   /* 聽 checksum 而不是資料本身：store.save() 先寫資料、後寫 checksum，
      在資料那個事件的當下 checksum 還是舊的，比對一定不過。 */
   if (e.key !== KEY + '_checksum' || !e.newValue) return;
-  if (dirty){ showMultiTabBanner(); return; }
-  let m = null;
-  try{
-    const raw = localStorage.getItem(KEY);
-    /* 這裡刻意不走 store.load()：它對不上就會掛起 loadError 叫出救援畫面，
-       但這裡對不上多半只是兩個 key 還沒寫完，下一個事件就會補上。 */
-    if (!raw || hashText(raw) !== e.newValue) return;
-    m = migrate(JSON.parse(raw));
-  }catch(err){ return; }
-  if (!m) return;
-  state = Object.assign(defaultState(), m);
-  render();
+  onForeignWrite();
 });
+window.addEventListener('pageshow', checkForeign);
+window.addEventListener('focus', checkForeign);
 function showMultiTabBanner(){
   if ($('#multiTabBar')) return;
   const bar = document.createElement('div');
@@ -1519,6 +1542,7 @@ function showMultiTabBanner(){
 }
 window.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'hidden'){
+    checkForeign();   /* 凍結期間別處可能寫過東西，先對齊再說 */
     /* 從背景回來 = 重新打開來用，換一句。只換那一句、不整頁重畫，正在打的字不會被吃掉。 */
     nextQuote();
     const el = ui.tab === 'today' && document.querySelector('.greet-quote .qt-tap');
@@ -4288,7 +4312,11 @@ const actions = {
     r.updatedAt = Date.now(); save(); refSheet(d.k); renderSoon();
   },
   'multitab-reload': () => { dirty = false; location.reload(); },
-  'multitab-keep': () => { const b = $('#multiTabBar'); if (b) b.remove(); flushSave(); toast('已保留這個視窗的紀錄'); },
+  'multitab-keep': () => {
+    const b = $('#multiTabBar'); if (b) b.remove();
+    store.sig = store.peekSig();   /* 明確選擇覆蓋，解除擋寫 */
+    dirty = true; flushSave(); toast('已保留這個視窗的紀錄');
+  },
   'hm-habit': d => { ui.hmHabit = d.id || null; render(); },
   'hist-more': () => { ui.histLimit += 20; render(); },
   'hist-toggle': () => { ui.histOpen = !ui.histOpen; render(); },
