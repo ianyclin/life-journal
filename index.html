@@ -102,6 +102,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   background:var(--card);border:1px solid var(--line-soft);box-shadow:var(--shadow);flex:none;
 }
 .icon-btn:active{transform:scale(.94)}
+.icon-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .icon-btn svg{width:19px;height:19px}
 .sec-title{
   display:flex;align-items:center;gap:8px;
@@ -162,8 +163,9 @@ textarea.field{resize:none;min-height:120px;line-height:1.7}
 .move-btn{padding:6px 7px;color:var(--ink3);flex:none;border-radius:8px}
 .move-btn:active{background:var(--card2)}
 .repeat-badge{color:var(--acc-deep);background:var(--acc-soft);border-color:transparent}
-.rep-ic{font-size:19px;width:22px;text-align:center;flex:none;color:var(--acc)}
-.rep-ic.off{color:var(--ink3);font-weight:700;letter-spacing:-1px}
+.rep-ic{font-size:15px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;color:var(--acc);background:var(--acc-soft)}
+.rep-ic:active{transform:scale(.92)}
+.rep-ic.off{color:var(--ink3);background:var(--card2)}
 .pause-tag{display:inline-block;margin-left:8px;vertical-align:middle;font-family:var(--sans);font-size:11.5px;font-weight:600;
   color:var(--ink2);background:var(--card2);border:1px solid var(--line-soft);border-radius:7px;padding:2px 8px}
 .due-badge{color:#6B5620;background:var(--gold-soft);border-color:transparent}
@@ -2147,16 +2149,34 @@ function yearReviewSheet(y){
     </div>`}`);
 }
 
+/* 本週平衡本來在今日頁，但它談的是「這幾天做了什麼」，和待辦清單放在一起
+   才看得到因果 —— 所以移到待辦頁的「本週」下方。 */
+function balanceCardHTML(){
+  const bal = areaBalance();
+  const meaningful = state.tasks.length + state.habits.length + state.goals.length + Object.keys(state.reflections).length;
+  if (meaningful < 3) return '';
+  const lowArea = bal.total >= 3 ? [...areaList()].sort((a, b) => bal.counts[a.id] - bal.counts[b.id])[0] : null;
+  return `<div class="card">
+    <div class="sec-title">本週平衡</div>
+    ${bal.total >= 3
+      ? areaList().map(a => `<div class="bal-row">
+          <span class="bal-lb">${esc(a.lb)}</span>
+          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${areaColor(a)}"></i></span>
+          <span class="bal-v">${bal.counts[a.id]}</span>
+        </div>`).join('') + `<div class="bal-note">近 7 天完成的事與習慣打卡。平衡不是平均，而是符合你此刻的選擇。</div>
+        ${lowArea ? `<div class="nudge">「${esc(lowArea.lb)}」最近比較安靜。若你也在意，可以替它留一件很小的事。<button data-act="balance-open" data-a="${esc(lowArea.id)}">看看 ›</button></div>` : ''}`
+      : '<div class="hint" style="padding:2px 2px 4px">完成幾件標了領域的事之後，這裡會看見你這週把時間放在哪。</div>'}
+  </div>`;
+}
+
 /* =================== 今日頁的版面 =================== */
 /* 今日頁的每個區塊都可以自己排順序、也可以收起來。
    沒有自訂過的話，順序仍然跟著一天的節奏走（見 todayOrder）。 */
 const TODAY_BLOCKS = [
-  {id:'goals', lb:'我的目標'},
   {id:'focus', lb:'今天最重要的三件事'},
-  {id:'others', lb:'其他待辦'},
-  {id:'upcoming', lb:'接下來的日子'},
+  {id:'goals', lb:'我的目標'},
   {id:'habits', lb:'今天的習慣'},
-  {id:'balance', lb:'本週平衡'},
+  {id:'upcoming', lb:'接下來的日子'},
   {id:'review', lb:'人生回顧'},
   {id:'reflection', lb:'今晚的反思'}
 ];
@@ -2169,9 +2189,11 @@ function todayOrder(){
   /* 之後版本新增的區塊會自動補在後面，不會因為舊版面設定就消失 */
   DEFAULT_TODAY_ORDER.forEach(id => { if (!order.includes(id)) order.push(id); });
   if (!custom && state.settings.todayAuto !== false && !ui.layoutEdit){
-    const h = new Date().getHours();
-    if (h >= 11) order = ['focus', ...order.filter(x => x !== 'focus')];
-    if (h >= 18){ order = order.filter(x => x !== 'reflection'); order.splice(order.indexOf('focus') + 1, 0, 'reflection'); }
+    /* 三件重點本來就在最前面；入夜之後把反思接到它後面 */
+    if (new Date().getHours() >= 18){
+      order = order.filter(x => x !== 'reflection');
+      order.splice(order.indexOf('focus') + 1, 0, 'reflection');
+    }
   }
   return order;
 }
@@ -2212,9 +2234,6 @@ function vToday(){
   const tk = todayKey();
   const focus = focusTasks();
   const fDone = focus.filter(t => t.done).length;
-  const others = state.tasks.filter(t => t.bucket === 'today' && !t.focus && (!t.scheduledDate || t.scheduledDate===tk));
-  const otherOpen = others.filter(t => !t.done);
-  const otherDone = others.filter(t => t.done);
   const habits = activeHabits();
   const ref = state.reflections[tk];
   const hasRef = ref && (ref.mood || (ref.text || '').trim());
@@ -2229,7 +2248,6 @@ function vToday(){
   const meaningful=state.tasks.length+state.habits.length+state.goals.length+Object.keys(state.reflections).length;
   const lastBackup=state.settings.lastBackupAt?new Date(state.settings.lastBackupAt):null;
   const needsBackup=meaningful>=10&&(!lastBackup||Date.now()-lastBackup.getTime()>14*864e5);
-  const lowArea=bal.total>=3?[...areaList()].sort((a,b)=>bal.counts[a.id]-bal.counts[b.id])[0]:null;
   const upcoming=upcomingTasks();
 
   /* 我的目標：每個進行中目標的名稱+進度+下一步 */
@@ -2317,20 +2335,6 @@ function vToday(){
     </div>` : '<div class="hint" style="margin-top:10px">三件都排好了，專心完成它們就好。</div>'}
   </div>`;
 
-  B.others = `<div class="card today-drop-zone" data-today-group="other">
-    <div class="sec-title">其他待辦<button class="right" data-act="tab" data-tab="todo">全部 ›</button></div>
-    ${otherOpen.length || otherDone.length
-      ? otherOpen.sort((a,b)=>(a.order??0)-(b.order??0)).map(t => `<div data-today-wrap="1">${taskItemHTML(t, {focusBtn:true,draggable:true,touchDrag:true})}</div>`).join('') + (otherDone.length?`<button class="hint" data-act="tab" data-tab="todo" style="width:100%;text-align:left;padding:9px 2px 2px">今天另有 ${otherDone.length} 件已完成，已替你收好 ›</button>`:'')
-      : '<div class="hint" style="padding:2px 2px 6px">其他想到的事，先寫在這裡就好。</div>'}
-    <div class="quickadd quickadd-wrap" style="display:block">
-      <div class="row" style="gap:8px">
-        <input class="field grow" id="qaToday" placeholder="其他要做的事…" enterkeyhint="done" data-enter="qa-today">
-        <button class="btn" style="padding:0 16px;border-radius:12px;flex:none" data-act="qa-today" aria-label="新增">${ICONS.plus}</button>
-      </div>
-      ${areaChipsHTML()}
-    </div>
-  </div>`;
-
   B.upcoming = upcoming.length ? `<div class="card pad-s">
     <div class="sec-title">接下來的日子<span class="right">${upcoming.length} 件已排定</span></div>
     ${upcoming.slice(0,4).map(t=>`<button class="result-item" data-act="task-edit" data-id="${t.id}">
@@ -2356,18 +2360,6 @@ function vToday(){
       : `<div class="hint" style="margin-bottom:9px">想養成什麼習慣？點一下加入：</div>
          <div class="seg">${SUGGEST_HABITS.map(s => `<button class="chip" data-act="habit-suggest" data-e="${s.e}" data-n="${s.n}" data-a="${s.a}">${s.e} ${s.n}</button>`).join('')}</div>`}
   </div>`;
-
-  B.balance = meaningful>=3?`<div class="card">
-    <div class="sec-title">本週平衡</div>
-    ${bal.total >= 3
-      ? areaList().map(a => `<div class="bal-row">
-          <span class="bal-lb">${esc(a.lb)}</span>
-          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${areaColor(a)}"></i></span>
-          <span class="bal-v">${bal.counts[a.id]}</span>
-        </div>`).join('') + `<div class="bal-note">近 7 天完成的事與習慣打卡。平衡不是平均，而是符合你此刻的選擇。</div>
-        ${lowArea?`<div class="nudge">「${lowArea.lb}」最近比較安靜。若你也在意，可以替它留一件很小的事。<button data-act="balance-open" data-a="${lowArea.id}">看看 ›</button></div>`:''}`
-      : '<div class="hint" style="padding:2px 2px 4px">完成幾件標了領域的事之後，這裡會看見你這週把時間放在哪。</div>'}
-  </div>`:'';
 
   B.review = meaningful>=3?weeklyReviewHTML():'';
 
@@ -2420,10 +2412,12 @@ function vTodo(){
   return `
   <div class="page-head">
     <div><h1>待辦清單</h1><div class="sub">還有 ${allOpen.length} 件事 · 已完成 ${state.tasks.filter(t=>t.done).length} 件</div></div>
-    <button class="icon-btn" data-act="repeat-add" aria-label="新增週期待辦">↻</button>
+    <button class="icon-btn ${ui.multi?'on':''}" data-act="multi-toggle" aria-label="${ui.multi?'完成選取':'批次整理'}">${ui.multi?'✓':'☑'}</button>
   </div>
-  <div class="row" style="margin:-5px 2px 12px"><button class="chip ${ui.multi?'on':''}" data-act="multi-toggle">${ui.multi?'完成選取':'批次整理'}</button>${ui.multi?`<span class="hint grow">已選 ${ui.selected.length} 件</span>`:''}</div>
-  ${ui.multi&&ui.selected.length?`<div class="card pad-s"><div class="sec-title">移動選取的待辦</div><div class="seg">${[['today','今天'],['week','本週'],['later','之後']].map(([b,lb])=>`<button class="chip" data-act="multi-move" data-b="${b}">${lb}</button>`).join('')}</div></div>`:''}
+  ${ui.multi?`<div class="card pad-s">
+    <div class="row" style="margin-bottom:${ui.selected.length?'10px':'0'}"><span class="grow hint">批次整理中 · 已選 ${ui.selected.length} 件</span><button class="chip" data-act="multi-toggle">完成</button></div>
+    ${ui.selected.length?`<div class="seg">${[['today','今天'],['week','本週'],['later','之後']].map(([b,lb])=>`<button class="chip" data-act="multi-move" data-b="${b}">移到${lb}</button>`).join('')}<button class="chip" data-act="multi-del" style="color:var(--m1)">刪除</button></div>`:''}
+  </div>`:''}
 
   <div class="card pad-s quickadd-wrap qa-always">
     <div class="quickadd" style="margin-top:0">
@@ -2457,14 +2451,14 @@ function vTodo(){
     return `<div class="card drop-zone" data-bucket="${b.id}">
       <div class="sec-title">${b.lb}<span class="right">${list.length} 件${b.id === 'today' && focusTasks().length ? ` · 重點 ${focusTasks().length}/${FOCUS_MAX}` : ''}</span></div>
       ${list.length ? list.map(t => taskItemHTML(t, {moveQuick:!ui.multi,draggable:!ui.multi&&ui.todoSort==='custom',multi:ui.multi,focusBtn:!ui.multi&&b.id==='today',showNote:true,hl:ui.todoQuery})).join('') : `<div class="hint" style="padding:4px 2px 6px">${b.hint}</div>`}
-    </div>`;
+    </div>` + (b.id === 'week' ? balanceCardHTML() : '');
   }).join('')}
 
   <div class="card">
     <div class="sec-title">週期待辦<span class="right">${recs.filter(r=>r.active).length} 個啟用中</span></div>
-    ${recs.length?`<div class="toolbar" style="margin-bottom:7px"><button class="chip" data-act="repeat-batch" data-active="0">全部暫停</button><button class="chip" data-act="repeat-batch" data-active="1">全部恢復</button></div>`:''}
     ${recs.length ? recs.map(r => { const next=nextOccurrence(r); return `<div class="repeat-row row">
-      <span class="rep-ic ${r.active?'':'off'}" aria-hidden="true">${r.active?'↻':'‖'}</span><span class="grow"><span style="display:block;font-size:14.5px;font-weight:600">${esc(r.title)}</span><span class="hint">${recurrenceLabel(r)}${next?` · 下次 ${fmtMD(next)}`:''}</span></span>
+      <button class="rep-ic ${r.active?'':'off'}" data-act="repeat-active" data-id="${r.id}" aria-label="${r.active?'暫停':'啟用'}「${esc(r.title)}」">${r.active?'⏸':'▶'}</button>
+      <span class="grow"><span style="display:block;font-size:14.5px;font-weight:600">${esc(r.title)}</span><span class="hint">${recurrenceLabel(r)}${r.active?(next?` · 下次 ${fmtMD(next)}`:''):' · 已暫停'}</span></span>
       <button class="open-edit" data-act="repeat-edit" data-id="${r.id}" aria-label="編輯週期待辦">${ICONS.dots}</button>
     </div>`; }).join('') : '<div class="hint" style="padding:2px 2px 8px">固定要做的事，設定一次就會在適合的日子出現。</div>'}
     <button class="btn ghost full sm" style="margin-top:10px" data-act="repeat-add">＋ 新增週期待辦</button>
@@ -3791,11 +3785,25 @@ const actions = {
     save(); render();
     const ni = $('#qaTodo'); if (ni){ ni.focus({preventScroll:true}); }
   },
-  'pick-bucket': d => { ui.addBucket = d.b; render(); const ni = $('#qaTodo'); if (ni) ni.focus({preventScroll:true}); },
+  /* 只換 chip 的樣式，不重繪 —— 重繪會把使用者打到一半的字清掉 */
+  'pick-bucket': (d, el) => {
+    ui.addBucket = d.b;
+    document.querySelectorAll('#bucketSeg .chip').forEach(b => b.classList.toggle('on', b.dataset.b === d.b));
+    const ni = $('#qaTodo'); if (ni) ni.focus({preventScroll:true});
+  },
   'todo-filter': d => { ui.todoArea=d.a;persistViewPrefs();render(); },
   'todo-dir': () => { ui.todoDir=ui.todoDir==='asc'?'desc':'asc';persistViewPrefs();render(); },
   'multi-toggle':()=>{ui.multi=!ui.multi;ui.selected=[];render();},
   'multi-pick':d=>{ui.selected=ui.selected.includes(d.id)?ui.selected.filter(x=>x!==d.id):[...ui.selected,d.id];render();},
+  'multi-del': () => {
+    const n = ui.selected.length;
+    if (!n) return;
+    confirmSheet(`刪除這 ${n} 件待辦？`, '被選取的待辦會永久刪除，無法復原。已完成的紀錄不受影響。', '刪除', () => {
+      state.tasks = state.tasks.filter(t => !ui.selected.includes(t.id));
+      ui.selected = []; ui.multi = false;
+      save(); render(); toast(`已刪除 ${n} 件`);
+    }, true);
+  },
   'multi-move':d=>{state.tasks.filter(t=>ui.selected.includes(t.id)).forEach(t=>{t.bucket=d.b;t.focus=t.focus&&d.b==='today';t.scheduledDate=d.b==='today'?todayKey():null;t.order=nextTaskOrder(d.b);});const n=ui.selected.length;ui.selected=[];ui.multi=false;save();render();toast(`已移動 ${n} 件待辦`);},
   'task-move-open': d => { const t=taskById(d.id); if(t) moveTaskSheet(t); },
   'task-quick-move': d => {
@@ -3890,7 +3898,12 @@ const actions = {
   },
   'repeat-del':d=>confirmSheet('刪除這個週期？','未來不會再自動建立；已經出現的待辦與完成紀錄會保留。','刪除',()=>{state.recurrences=state.recurrences.filter(r=>r.id!==d.id);save();render();toast('已停止週期');},true),
   'repeat-skip-next':d=>{const r=state.recurrences.find(x=>x.id===d.id),k=r&&nextOccurrence(r);if(!r||!k)return;r.skips=r.skips||[];if(!r.skips.includes(k))r.skips.push(k);save();recurrenceSheet(r);toast('已跳過下一次');},
-  'repeat-batch':d=>{const active=d.active==='1';state.recurrences.forEach(r=>r.active=active);save();render();toast(active?'已恢復全部週期':'已暫停全部週期');},
+  'repeat-active': d => {
+    const r = state.recurrences.find(x => x.id === d.id); if (!r) return;
+    r.active = !r.active;
+    if (r.active){ ensureRecurringTasks(todayKey()); }
+    save(); render(); toast(r.active ? '已啟用' : '已暫停');
+  },
 
   /* 習慣 */
   'habit-today': d => { toggleHabit(d.id, todayKey()); if(isChecked(d.id,todayKey())) buzz(10); render(); },
