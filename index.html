@@ -102,6 +102,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
   background:var(--card);border:1px solid var(--line-soft);box-shadow:var(--shadow);flex:none;
 }
 .icon-btn:active{transform:scale(.94)}
+.icon-btn.on{background:var(--acc);border-color:var(--acc);color:#fff}
 .icon-btn svg{width:19px;height:19px}
 .sec-title{
   display:flex;align-items:center;gap:8px;
@@ -162,8 +163,9 @@ textarea.field{resize:none;min-height:120px;line-height:1.7}
 .move-btn{padding:6px 7px;color:var(--ink3);flex:none;border-radius:8px}
 .move-btn:active{background:var(--card2)}
 .repeat-badge{color:var(--acc-deep);background:var(--acc-soft);border-color:transparent}
-.rep-ic{font-size:19px;width:22px;text-align:center;flex:none;color:var(--acc)}
-.rep-ic.off{color:var(--ink3);font-weight:700;letter-spacing:-1px}
+.rep-ic{font-size:15px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;flex:none;color:var(--acc);background:var(--acc-soft)}
+.rep-ic:active{transform:scale(.92)}
+.rep-ic.off{color:var(--ink3);background:var(--card2)}
 .pause-tag{display:inline-block;margin-left:8px;vertical-align:middle;font-family:var(--sans);font-size:11.5px;font-weight:600;
   color:var(--ink2);background:var(--card2);border:1px solid var(--line-soft);border-radius:7px;padding:2px 8px}
 .due-badge{color:#6B5620;background:var(--gold-soft);border-color:transparent}
@@ -458,6 +460,11 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .s-today.q{color:var(--ink3);background:var(--card2);font-weight:500}
 .goal-drag{padding:6px 4px;color:var(--ink3);font-size:15px;cursor:grab;touch-action:none;flex:none}
 .goal-card-dragging{opacity:.5}
+.g-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.g-tag{font-size:11.5px;padding:2px 8px;border-radius:99px;background:color-mix(in srgb,var(--tg) 16%,transparent);color:var(--tg);font-weight:600}
+.g-tag.plain{background:var(--line2);color:var(--ink3);font-weight:500}
+.goal-pin{flex:none;background:none;border:0;font-size:15px;padding:4px 5px;opacity:.28;filter:grayscale(1);cursor:pointer}
+.goal-pin.on{opacity:1;filter:none}
 .goal-card-over{outline:2.5px dashed var(--acc)!important;outline-offset:3px}
 .step-more{width:100%;text-align:center;font-size:12.5px;color:var(--ink3);padding:9px 0 2px}
 .step-more:active{color:var(--acc)}
@@ -751,7 +758,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.0';
+const APP_VERSION = '1.1';
 const WD = ['日','一','二','三','四','五','六'];
 /* 每日箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1370,10 +1377,10 @@ const defaultState = () => ({
   weeklyReviews: {},// {'week-start': {proud,adjust,next,updatedAt}}
   recurrences: [],  // 週期待辦範本
   settings: {lastOpenDay:null,lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,recentEmojis:[],textSize:'normal',haptics:true,
-    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper'}
+    todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper',autoClearDone:30}
 });
 const SETTINGS_DEFAULTS = () => ({lastOpenDay:todayKey(),lastBackupAt:null,lastAutoBackupDay:null,viewPrefs:{},onboardingDismissed:false,
-  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper'});
+  recentEmojis:[],textSize:'normal',haptics:true,todayLayout:null,todayHidden:[],todayAuto:true,lock:null,reminder:null,fsBackup:null,yearReviewDismissed:null,quotePacks:['core','zen'],terms:null,mutedQuotes:[],theme:'paper',autoClearDone:30});
 /* 舊版資料升級：保留既有紀錄，補上排序、日期、週期與溫和習慣欄位 */
 function migrate(s){
   if (!s || !Array.isArray(s.tasks)) return null;
@@ -1422,6 +1429,10 @@ function migrate(s){
   } : null;
   if (!Array.isArray(s.settings.mutedQuotes)) s.settings.mutedQuotes = [];
   if (!['paper','sea','forest','rose'].includes(s.settings.theme)) s.settings.theme = 'paper';
+  if (![0, 30, 100].includes(s.settings.autoClearDone)) s.settings.autoClearDone = 30;
+  /* 釘選最多兩個：舊備份或手動改過的資料進來時，多的直接取消 */
+  let pins = 0;
+  s.goals.forEach(g => { g.pinned = !!g.pinned && !g.done && ++pins <= 2; });
   const cq = s.customQuotes;
   s.customQuotes = {
     day: Array.isArray(cq && cq.day) ? cq.day.filter(x => typeof x === 'string').slice(0, 200) : [],
@@ -1722,11 +1733,30 @@ function nextOccurrence(r){
 }
 function overdueTodayTasks(){ const tk=todayKey(); return state.tasks.filter(t => !t.done && t.bucket === 'today' && t.scheduledDate && t.scheduledDate < tk); }
 /* 排到未來某一天的事：到了那天自己走進「今天」，平時不佔版面 */
+/* 已完成的待辦累積久了會拖慢畫面、也佔儲存空間。預設保留最近 30 筆，
+   設定裡可以改成 100 或不清 —— 清掉的只是待辦，習慣與反思的紀錄不受影響。 */
+function autoClearDone(){
+  const limit = state.settings.autoClearDone;
+  if (!limit) return 0;
+  const done = state.tasks.filter(t => t.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+  if (done.length <= limit) return 0;
+  const drop = new Set(done.slice(limit).map(t => t.id));
+  state.tasks = state.tasks.filter(t => !drop.has(t.id));
+  return drop.size;
+}
+
 function promoteScheduled(k){
   let n = 0;
+  const soon = dkey(addDays(fromKey(k), 7));
   state.tasks.forEach(t => {
-    if (t.done || !t.dueDate || t.dueDate > k) return;
-    t.bucket = 'today'; t.scheduledDate = k; t.order = nextTaskOrder('today'); t.dueDate = null; n++;
+    if (t.done || !t.dueDate) return;
+    if (t.dueDate <= k){
+      /* 到了那天，走進今天 */
+      t.bucket = 'today'; t.scheduledDate = k; t.order = nextTaskOrder('today'); t.dueDate = null; n++;
+    } else if (t.dueDate <= soon && t.bucket === 'later'){
+      /* 剩一週以內，先浮到本週，讓人有心理準備 */
+      t.bucket = 'week'; t.order = nextTaskOrder('week'); n++;
+    }
   });
   if (n) store.save(state);
   return n;
@@ -1901,6 +1931,30 @@ function scopeRange(scope){
   if (scope === 'year'){ return [dkey(new Date(now.getFullYear(),0,1)), dkey(new Date(now.getFullYear()+1,0,1)), `${now.getFullYear()} 年`]; }
   const s = weekStart(); return [dkey(s), dkey(addDays(s,7)), `${fmtMD(dkey(s))} 起`];
 }
+/* 寫過的每週回顧原本只在時光軸與匯出檔裡看得到 —— 使用者理所當然會問「那些字去哪了」。
+   這裡給它一個正門，而且可以直接改。 */
+function pastWeeklyKeys(){
+  const now = currentWeekKey();
+  return Object.keys(state.weeklyReviews)
+    .filter(k => k !== now)
+    .filter(k => { const r = state.weeklyReviews[k]; return r && ((r.proud || '').trim() || (r.adjust || '').trim() || (r.next || '').trim()); })
+    .sort().reverse();
+}
+function pastReviewsSheet(){
+  const ks = pastWeeklyKeys();
+  const F = [['proud', '最想肯定自己的事'], ['adjust', '想調整的'], ['next', '想守住的一件事']];
+  openSheet(`<h2>過去的每週回顧</h2>
+    <div class="hint" style="margin-bottom:12px">共 ${ks.length} 週。內容可以直接修改，改完自動存。</div>
+    ${ks.map(k => {
+      const r = state.weeklyReviews[k], d = fromKey(k), e = addDays(d, 6);
+      return `<div class="card pad-s" style="margin-bottom:11px">
+        <div class="sec-title" style="margin:0 0 8px">${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日–${e.getMonth() + 1}月${e.getDate()}日</div>
+        ${F.map(([key, lb]) => `<div class="lbl" style="margin:8px 0 4px;font-size:12.5px;color:var(--ink2);font-weight:600">${lb}</div>
+          <textarea class="field" style="min-height:56px" data-input="week-review" data-wk="${k}" data-key="${key}" placeholder="（當時沒有寫）">${esc(r[key] || '')}</textarea>`).join('')}
+      </div>`;
+    }).join('')}
+    <div class="sheet-actions"><button class="btn" data-act="sheet-close">關閉</button></div>`);
+}
 function weeklyReviewHTML(){
   const k=currentWeekKey(),r=state.weeklyReviews[k]||{},sun=new Date().getDay()===0;
   const scope = ui.reviewScope || 'week';
@@ -1910,6 +1964,7 @@ function weeklyReviewHTML(){
   return `<div class="card" id="weeklyReviewCard"><div class="sec-title">人生回顧<span class="right">${label}</span></div>
     <div class="toolbar" style="margin-bottom:9px" aria-label="回顧範圍">
       ${[['week','本週'],['month','本月'],['year','今年']].map(([v,lb])=>`<button class="chip ${scope===v?'on':''}" data-act="review-scope" data-v="${v}">${lb}</button>`).join('')}
+      ${pastWeeklyKeys().length ? `<button class="chip" data-act="past-reviews">📖 過去的回顧 ${pastWeeklyKeys().length}</button>` : ''}
       <button class="chip" data-act="timeline">🕰️ 時光軸</button>
       <button class="chip" data-act="year-review" data-y="${new Date().getFullYear()}">📅 年度回顧</button>
     </div>
@@ -2147,16 +2202,34 @@ function yearReviewSheet(y){
     </div>`}`);
 }
 
+/* 本週平衡本來在今日頁，但它談的是「這幾天做了什麼」，和待辦清單放在一起
+   才看得到因果 —— 所以移到待辦頁的「本週」下方。 */
+function balanceCardHTML(){
+  const bal = areaBalance();
+  const meaningful = state.tasks.length + state.habits.length + state.goals.length + Object.keys(state.reflections).length;
+  if (meaningful < 3) return '';
+  const lowArea = bal.total >= 3 ? [...areaList()].sort((a, b) => bal.counts[a.id] - bal.counts[b.id])[0] : null;
+  return `<div class="card">
+    <div class="sec-title">本週平衡</div>
+    ${bal.total >= 3
+      ? areaList().map(a => `<div class="bal-row">
+          <span class="bal-lb">${esc(a.lb)}</span>
+          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${areaColor(a)}"></i></span>
+          <span class="bal-v">${bal.counts[a.id]}</span>
+        </div>`).join('') + `<div class="bal-note">近 7 天完成的事與習慣打卡。平衡不是平均，而是符合你此刻的選擇。</div>
+        ${lowArea ? `<div class="nudge">「${esc(lowArea.lb)}」最近比較安靜。若你也在意，可以替它留一件很小的事。<button data-act="balance-open" data-a="${esc(lowArea.id)}">看看 ›</button></div>` : ''}`
+      : '<div class="hint" style="padding:2px 2px 4px">完成幾件標了領域的事之後，這裡會看見你這週把時間放在哪。</div>'}
+  </div>`;
+}
+
 /* =================== 今日頁的版面 =================== */
 /* 今日頁的每個區塊都可以自己排順序、也可以收起來。
    沒有自訂過的話，順序仍然跟著一天的節奏走（見 todayOrder）。 */
 const TODAY_BLOCKS = [
-  {id:'goals', lb:'我的目標'},
   {id:'focus', lb:'今天最重要的三件事'},
-  {id:'others', lb:'其他待辦'},
-  {id:'upcoming', lb:'接下來的日子'},
+  {id:'goals', lb:'我的目標'},
   {id:'habits', lb:'今天的習慣'},
-  {id:'balance', lb:'本週平衡'},
+  {id:'upcoming', lb:'接下來的日子'},
   {id:'review', lb:'人生回顧'},
   {id:'reflection', lb:'今晚的反思'}
 ];
@@ -2169,9 +2242,11 @@ function todayOrder(){
   /* 之後版本新增的區塊會自動補在後面，不會因為舊版面設定就消失 */
   DEFAULT_TODAY_ORDER.forEach(id => { if (!order.includes(id)) order.push(id); });
   if (!custom && state.settings.todayAuto !== false && !ui.layoutEdit){
-    const h = new Date().getHours();
-    if (h >= 11) order = ['focus', ...order.filter(x => x !== 'focus')];
-    if (h >= 18){ order = order.filter(x => x !== 'reflection'); order.splice(order.indexOf('focus') + 1, 0, 'reflection'); }
+    /* 三件重點本來就在最前面；入夜之後把反思接到它後面 */
+    if (new Date().getHours() >= 18){
+      order = order.filter(x => x !== 'reflection');
+      order.splice(order.indexOf('focus') + 1, 0, 'reflection');
+    }
   }
   return order;
 }
@@ -2212,9 +2287,6 @@ function vToday(){
   const tk = todayKey();
   const focus = focusTasks();
   const fDone = focus.filter(t => t.done).length;
-  const others = state.tasks.filter(t => t.bucket === 'today' && !t.focus && (!t.scheduledDate || t.scheduledDate===tk));
-  const otherOpen = others.filter(t => !t.done);
-  const otherDone = others.filter(t => t.done);
   const habits = activeHabits();
   const ref = state.reflections[tk];
   const hasRef = ref && (ref.mood || (ref.text || '').trim());
@@ -2229,20 +2301,22 @@ function vToday(){
   const meaningful=state.tasks.length+state.habits.length+state.goals.length+Object.keys(state.reflections).length;
   const lastBackup=state.settings.lastBackupAt?new Date(state.settings.lastBackupAt):null;
   const needsBackup=meaningful>=10&&(!lastBackup||Date.now()-lastBackup.getTime()>14*864e5);
-  const lowArea=bal.total>=3?[...areaList()].sort((a,b)=>bal.counts[a.id]-bal.counts[b.id])[0]:null;
   const upcoming=upcomingTasks();
 
   /* 我的目標：每個進行中目標的名稱+進度+下一步 */
+  /* 釘選過就只看釘選的那幾個；沒釘就沿用「前兩個進行中」 */
   const actGoals = state.goals.filter(g => !g.done && !g.paused);
+  const pinned = actGoals.filter(g => g.pinned);
+  const shownGoals = pinned.length ? pinned.slice(0, 2) : actGoals.slice(0, 2);
   const goalsCard = `<div class="card" id="goalsCard">
     <div class="sec-title">我的目標<button class="right" data-act="tab" data-tab="goal">全部 ›</button></div>
-    ${actGoals.length ? actGoals.slice(0,2).map(g => {
+    ${actGoals.length ? shownGoals.map(g => {
       const p = goalProgress(g);
       const next = g.steps.find(s => !s.done);
       const queued = next && state.tasks.some(t => t.stepId === next.id && !t.done);
       return `<div class="tg-item">
         <div class="row" style="align-items:baseline">
-          <div class="grow tg-title">${esc(g.title)}</div>
+          <div class="grow tg-title">${g.pinned ? '📌 ' : ''}${esc(g.title)}</div>
           <span style="font-size:12px;color:var(--ink2);flex:none">${p.d}/${p.t} 步</span>
         </div>
         <div class="meter" style="margin:7px 0 8px"><i style="width:${p.pct}%"></i></div>
@@ -2317,20 +2391,6 @@ function vToday(){
     </div>` : '<div class="hint" style="margin-top:10px">三件都排好了，專心完成它們就好。</div>'}
   </div>`;
 
-  B.others = `<div class="card today-drop-zone" data-today-group="other">
-    <div class="sec-title">其他待辦<button class="right" data-act="tab" data-tab="todo">全部 ›</button></div>
-    ${otherOpen.length || otherDone.length
-      ? otherOpen.sort((a,b)=>(a.order??0)-(b.order??0)).map(t => `<div data-today-wrap="1">${taskItemHTML(t, {focusBtn:true,draggable:true,touchDrag:true})}</div>`).join('') + (otherDone.length?`<button class="hint" data-act="tab" data-tab="todo" style="width:100%;text-align:left;padding:9px 2px 2px">今天另有 ${otherDone.length} 件已完成，已替你收好 ›</button>`:'')
-      : '<div class="hint" style="padding:2px 2px 6px">其他想到的事，先寫在這裡就好。</div>'}
-    <div class="quickadd quickadd-wrap" style="display:block">
-      <div class="row" style="gap:8px">
-        <input class="field grow" id="qaToday" placeholder="其他要做的事…" enterkeyhint="done" data-enter="qa-today">
-        <button class="btn" style="padding:0 16px;border-radius:12px;flex:none" data-act="qa-today" aria-label="新增">${ICONS.plus}</button>
-      </div>
-      ${areaChipsHTML()}
-    </div>
-  </div>`;
-
   B.upcoming = upcoming.length ? `<div class="card pad-s">
     <div class="sec-title">接下來的日子<span class="right">${upcoming.length} 件已排定</span></div>
     ${upcoming.slice(0,4).map(t=>`<button class="result-item" data-act="task-edit" data-id="${t.id}">
@@ -2356,18 +2416,6 @@ function vToday(){
       : `<div class="hint" style="margin-bottom:9px">想養成什麼習慣？點一下加入：</div>
          <div class="seg">${SUGGEST_HABITS.map(s => `<button class="chip" data-act="habit-suggest" data-e="${s.e}" data-n="${s.n}" data-a="${s.a}">${s.e} ${s.n}</button>`).join('')}</div>`}
   </div>`;
-
-  B.balance = meaningful>=3?`<div class="card">
-    <div class="sec-title">本週平衡</div>
-    ${bal.total >= 3
-      ? areaList().map(a => `<div class="bal-row">
-          <span class="bal-lb">${esc(a.lb)}</span>
-          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${areaColor(a)}"></i></span>
-          <span class="bal-v">${bal.counts[a.id]}</span>
-        </div>`).join('') + `<div class="bal-note">近 7 天完成的事與習慣打卡。平衡不是平均，而是符合你此刻的選擇。</div>
-        ${lowArea?`<div class="nudge">「${lowArea.lb}」最近比較安靜。若你也在意，可以替它留一件很小的事。<button data-act="balance-open" data-a="${lowArea.id}">看看 ›</button></div>`:''}`
-      : '<div class="hint" style="padding:2px 2px 4px">完成幾件標了領域的事之後，這裡會看見你這週把時間放在哪。</div>'}
-  </div>`:'';
 
   B.review = meaningful>=3?weeklyReviewHTML():'';
 
@@ -2420,10 +2468,12 @@ function vTodo(){
   return `
   <div class="page-head">
     <div><h1>待辦清單</h1><div class="sub">還有 ${allOpen.length} 件事 · 已完成 ${state.tasks.filter(t=>t.done).length} 件</div></div>
-    <button class="icon-btn" data-act="repeat-add" aria-label="新增週期待辦">↻</button>
+    <button class="icon-btn ${ui.multi?'on':''}" data-act="multi-toggle" aria-label="${ui.multi?'完成選取':'批次整理'}">${ui.multi?'✓':'☑'}</button>
   </div>
-  <div class="row" style="margin:-5px 2px 12px"><button class="chip ${ui.multi?'on':''}" data-act="multi-toggle">${ui.multi?'完成選取':'批次整理'}</button>${ui.multi?`<span class="hint grow">已選 ${ui.selected.length} 件</span>`:''}</div>
-  ${ui.multi&&ui.selected.length?`<div class="card pad-s"><div class="sec-title">移動選取的待辦</div><div class="seg">${[['today','今天'],['week','本週'],['later','之後']].map(([b,lb])=>`<button class="chip" data-act="multi-move" data-b="${b}">${lb}</button>`).join('')}</div></div>`:''}
+  ${ui.multi?`<div class="card pad-s">
+    <div class="row" style="margin-bottom:${ui.selected.length?'10px':'0'}"><span class="grow hint">批次整理中 · 已選 ${ui.selected.length} 件</span><button class="chip" data-act="multi-toggle">完成</button></div>
+    ${ui.selected.length?`<div class="seg">${[['today','今天'],['week','本週'],['later','之後']].map(([b,lb])=>`<button class="chip" data-act="multi-move" data-b="${b}">移到${lb}</button>`).join('')}<button class="chip" data-act="multi-del" style="color:var(--m1)">刪除</button></div>`:''}
+  </div>`:''}
 
   <div class="card pad-s quickadd-wrap qa-always">
     <div class="quickadd" style="margin-top:0">
@@ -2432,7 +2482,12 @@ function vTodo(){
     </div>
     <div class="seg" style="margin-top:10px" id="bucketSeg">
       ${buckets.map(b => `<button class="chip ${ui.addBucket === b.id ? 'on' : ''}" data-act="pick-bucket" data-b="${b.id}">${b.lb}</button>`).join('')}
+      <button class="chip ${ui.addBucket === 'book' ? 'on' : ''}" data-act="pick-bucket" data-b="book">預約…</button>
     </div>
+    <div id="bookRow" class="row" style="margin-top:9px;${ui.addBucket === 'book' ? '' : 'display:none'}">
+      <input class="field grow" type="date" id="qaDate" min="${todayKey()}" value="${esc(ui.addDate || '')}" data-change="qa-date" aria-label="預約日期">
+    </div>
+    ${ui.addBucket === 'book' ? '<div class="hint" style="margin-top:6px">先安靜收著。剩一週會自己走到「本週」，到了那天早上出現在「今天」。</div>' : ''}
     ${areaChipsHTML()}
   </div>
 
@@ -2457,14 +2512,14 @@ function vTodo(){
     return `<div class="card drop-zone" data-bucket="${b.id}">
       <div class="sec-title">${b.lb}<span class="right">${list.length} 件${b.id === 'today' && focusTasks().length ? ` · 重點 ${focusTasks().length}/${FOCUS_MAX}` : ''}</span></div>
       ${list.length ? list.map(t => taskItemHTML(t, {moveQuick:!ui.multi,draggable:!ui.multi&&ui.todoSort==='custom',multi:ui.multi,focusBtn:!ui.multi&&b.id==='today',showNote:true,hl:ui.todoQuery})).join('') : `<div class="hint" style="padding:4px 2px 6px">${b.hint}</div>`}
-    </div>`;
+    </div>` + (b.id === 'week' ? balanceCardHTML() : '');
   }).join('')}
 
   <div class="card">
     <div class="sec-title">週期待辦<span class="right">${recs.filter(r=>r.active).length} 個啟用中</span></div>
-    ${recs.length?`<div class="toolbar" style="margin-bottom:7px"><button class="chip" data-act="repeat-batch" data-active="0">全部暫停</button><button class="chip" data-act="repeat-batch" data-active="1">全部恢復</button></div>`:''}
     ${recs.length ? recs.map(r => { const next=nextOccurrence(r); return `<div class="repeat-row row">
-      <span class="rep-ic ${r.active?'':'off'}" aria-hidden="true">${r.active?'↻':'‖'}</span><span class="grow"><span style="display:block;font-size:14.5px;font-weight:600">${esc(r.title)}</span><span class="hint">${recurrenceLabel(r)}${next?` · 下次 ${fmtMD(next)}`:''}</span></span>
+      <button class="rep-ic ${r.active?'':'off'}" data-act="repeat-active" data-id="${r.id}" aria-label="${r.active?'暫停':'啟用'}「${esc(r.title)}」">${r.active?'⏸':'▶'}</button>
+      <span class="grow"><span style="display:block;font-size:14.5px;font-weight:600">${esc(r.title)}</span><span class="hint">${recurrenceLabel(r)}${r.active?(next?` · 下次 ${fmtMD(next)}`:''):' · 已暫停'}</span></span>
       <button class="open-edit" data-act="repeat-edit" data-id="${r.id}" aria-label="編輯週期待辦">${ICONS.dots}</button>
     </div>`; }).join('') : '<div class="hint" style="padding:2px 2px 8px">固定要做的事，設定一次就會在適合的日子出現。</div>'}
     <button class="btn ghost full sm" style="margin-top:10px" data-act="repeat-add">＋ 新增週期待辦</button>
@@ -2793,9 +2848,11 @@ function vReflect(){
   /* 今天那篇在上面的編輯區，所以這裡的清單與計數都不含今天 —— 兩邊口徑要一致，
      否則會出現「說有 1 篇、列表卻空的」。 */
   const hasToday = !!(ref.mood || (ref.text || '').trim());
-  const pastCount = Object.keys(state.reflections).filter(k => k !== tk).length;
+  /* 今天那篇寫完收起來之後也會出現在清單裡 —— 使用者的直覺是「存檔了就該看得到」 */
+  const refDone = hasToday && ui.refDone === tk;
+  const pastCount = Object.keys(state.reflections).length;
   const hist = Object.keys(state.reflections)
-    .filter(k => k !== tk && (ui.refMood==='all'||Number(ui.refMood)===state.reflections[k].mood) && (!rq||`${k} ${state.reflections[k].text||''}`.toLocaleLowerCase('zh-Hant').includes(rq)))
+    .filter(k => (ui.refMood==='all'||Number(ui.refMood)===state.reflections[k].mood) && (!rq||`${k} ${state.reflections[k].text||''}`.toLocaleLowerCase('zh-Hant').includes(rq)))
     .sort().reverse().slice(0, ui.histLimit);
 
   return `
@@ -2809,6 +2866,11 @@ function vReflect(){
     <div class="moods" style="margin-top:7px">
       ${MOODS.map(m => `<button class="mood-btn ${ref.mood === m.v ? 'on' : ''}" data-act="mood" data-v="${m.v}" aria-label="${m.lb}">${m.e}<span>${m.lb}</span></button>`).join('')}
     </div>
+    ${refDone ? `<button class="row" style="width:100%;text-align:left;padding:10px 2px" data-act="ref-edit-today">
+      <span style="font-size:22px">${(MOODS.find(m => m.v === ref.mood) || {e:'📝'}).e}</span>
+      <span class="grow"><strong style="font-size:14.5px;display:block">今天已記錄 ✓</strong><span class="hint">${esc((ref.text || '').split('\n')[0].slice(0, 26) || '只記了心情')}</span></span>
+      <span style="color:var(--acc);font-size:13px;font-weight:600">編輯 ›</span>
+    </button>` : `
     ${(() => {
       const ps = todayPrompts();
       if (!ps.length) return '';
@@ -2823,7 +2885,10 @@ function vReflect(){
       ${PROMPTS.map(p => `<button class="chip" data-act="prompt" data-p="${esc(p)}">${p}</button>`).join('')}
     </div>
     <textarea class="field" id="refText" placeholder="今天過得如何？寫幾句就好…" data-input="ref-text">${esc(ref.text || '')}</textarea>
-    <div class="save-state" id="saveState">寫下的字會自動儲存</div>
+    <div class="row" style="margin-top:9px">
+      <span class="save-state grow" id="saveState">寫下的字會自動儲存</span>
+      <button class="btn sm" data-act="ref-save">儲存</button>
+    </div>`}
   </div>
 
   ${memories.length ? `<div class="card pad-s">
@@ -2847,8 +2912,8 @@ function vReflect(){
   </div>
 
   <div class="card">
-    <div class="sec-title">過去的紀錄<span class="right">${pastCount} 篇</span></div>
-    <div class="search-wrap" style="margin-bottom:10px"><input class="field" id="refSearch" value="${esc(ui.refQuery)}" placeholder="搜尋過去寫下的話…" data-input="ref-search" aria-label="搜尋反思"></div>
+    <div class="sec-title">過去的紀錄<button class="right" data-act="hist-toggle">${pastCount} 篇 ${ui.histOpen ? '▲' : '▼'}</button></div>
+    ${ui.histOpen ? `<div class="search-wrap" style="margin-bottom:10px"><input class="field" id="refSearch" value="${esc(ui.refQuery)}" placeholder="搜尋過去寫下的話…" data-input="ref-search" aria-label="搜尋反思"></div>
     <div class="row" style="margin-bottom:9px">
       <span class="hint" style="flex:none">跳到</span>
       <input class="field grow" type="date" id="refJump" max="${tk}" data-change="ref-jump" aria-label="跳到某一天">
@@ -2875,8 +2940,8 @@ function vReflect(){
     })() : `<div class="empty" style="padding:14px">${ART.moon}${
       hasToday ? '今天那篇就在上面。之後的每一篇，都會收在這裡' : '之後的每一篇，都會收在這裡'
     }</div>`}
-    ${Object.keys(state.reflections).filter(k => k !== tk).length > ui.histLimit && !rq
-      ? '<button class="btn plain full sm" style="margin-top:10px" data-act="hist-more">看更早的紀錄</button>' : ''}
+    ${Object.keys(state.reflections).length > ui.histLimit && !rq
+      ? '<button class="btn plain full sm" style="margin-top:10px" data-act="hist-more">看更早的紀錄</button>' : ''}` : ''}
   </div>`;
 }
 
@@ -2953,7 +3018,13 @@ function goalCardHTML(g){
       <div class="grow">
         <div class="g-title">${g.done ? '🎉 ' : ''}${esc(g.title)}${g.paused?'<span class="pause-tag">暫停中</span>':''}</div>
         ${g.why ? `<div class="g-why">${esc(g.why)}</div>` : ''}
+        ${(() => {
+          /* 期程已經是上面那排分組標題，這裡只補領域 —— 同一件事說兩次是雜訊 */
+          const a = areaOf(g.area);
+          return a ? `<div class="g-meta"><span class="g-tag" style="--tg:${a.c}">${esc(a.lb)}</span></div>` : '';
+        })()}
       </div>
+      ${g.done ? '' : `<button class="goal-pin ${g.pinned ? 'on' : ''}" data-act="goal-pin" data-id="${g.id}" aria-label="${g.pinned ? '取消釘選' : '釘選到今日頁'}" title="${g.pinned ? '取消釘選' : '釘選到今日頁'}">📌</button>`}
       <button class="goal-drag" data-goal-drag="${g.id}" aria-label="拖曳排序「${esc(g.title)}」">⠿</button>
       <button class="open-edit" data-act="goal-edit" data-id="${g.id}" aria-label="編輯目標">${ICONS.dots}</button>
     </div>
@@ -3173,6 +3244,9 @@ function settingsSection(id){
 
   if (id === 'backup'){
     body = `${back('備份與還原')}
+    <div class="lbl">已完成的待辦</div>
+    <div class="hint" style="margin-bottom:6px">超過的會自動清掉最舊的。只影響待辦，習慣與反思的紀錄不受影響。</div>
+    <div class="seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v,lb]) => `<button class="chip ${(state.settings.autoClearDone ?? 30) === v ? 'on' : ''}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
     <div class="hint">${!persistState.supported
       ? '這個瀏覽器沒有提供長期保存設定，請記得定期備份。'
       : persistState.granted
@@ -3757,6 +3831,12 @@ const actions = {
     if (!THEMES.some(t => t.id === d.v)) return;
     state.settings.theme = d.v; save(); applyTheme(); settingsSection('look');
   },
+  'autoclear': d => {
+    state.settings.autoClearDone = Number(d.v);
+    const n = autoClearDone();
+    save(); settingsSection('backup'); render();
+    if (n) toast(`已清掉 ${n} 筆較舊的已完成待辦`);
+  },
   'text-size':d=>{state.settings.textSize=d.v;document.body.classList.toggle('text-large',d.v==='large');save();settingsSection('look');},
   'global-search':()=>globalSearchSheet(''),
   'search-go':d=>{closeSheet();go(d.tab);if(d.k)setTimeout(()=>refSheet(d.k),120);},
@@ -3764,6 +3844,7 @@ const actions = {
   'onboard-dismiss':()=>{state.settings.onboardingDismissed=true;save();render();},
   'balance-open':d=>{ui.todoArea=d.a;go('todo');},
   'review-scope':d=>{ui.reviewScope=d.v;render();setTimeout(()=>{const c=$('#weeklyReviewCard');if(c)c.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'nearest'});},60);},
+  'past-reviews': () => pastReviewsSheet(),
   'week-review-open':()=>{const k=currentWeekKey();state.weeklyReviews[k]=state.weeklyReviews[k]||{};state.weeklyReviews[k].opened=true;save();render();setTimeout(()=>{const c=$('#weeklyReviewCard');if(c)c.scrollIntoView({behavior:'smooth',block:'start'});},80);},
   'sheet-close': () => closeSheet(),
   'confirm-ok': () => { const cb = confirmSheet._cb; closeSheet(); cb && cb(); },
@@ -3787,15 +3868,38 @@ const actions = {
   'qa-todo': () => {
     const i = $('#qaTodo'); const v = (i.value || '').trim();
     if (!v) { i.focus(); return; }
-    addTask({title:v,bucket:ui.addBucket||'today',area:ui.addArea});
-    save(); render();
+    if (ui.addBucket === 'book'){
+      const dt = ($('#qaDate') && $('#qaDate').value) || ui.addDate || '';
+      if (!dt || dt <= todayKey()){ toast('選一個之後的日期'); const el = $('#qaDate'); if (el) el.focus(); return; }
+      addTask({title:v, bucket:'later', area:ui.addArea, dueDate:dt});
+      save(); render(); toast(`已預約 ${dueLabel(dt)}`);
+    } else {
+      addTask({title:v, bucket:ui.addBucket || 'today', area:ui.addArea});
+      save(); render();
+    }
     const ni = $('#qaTodo'); if (ni){ ni.focus({preventScroll:true}); }
   },
-  'pick-bucket': d => { ui.addBucket = d.b; render(); const ni = $('#qaTodo'); if (ni) ni.focus({preventScroll:true}); },
+  /* 只換 chip 的樣式，不重繪 —— 重繪會把使用者打到一半的字清掉 */
+  'pick-bucket': (d, el) => {
+    ui.addBucket = d.b;
+    document.querySelectorAll('#bucketSeg .chip').forEach(b => b.classList.toggle('on', b.dataset.b === d.b));
+    const row = $('#bookRow'); if (row) row.style.display = d.b === 'book' ? '' : 'none';
+    if (d.b === 'book'){ const dt = $('#qaDate'); if (dt) dt.focus(); return; }
+    const ni = $('#qaTodo'); if (ni) ni.focus({preventScroll:true});
+  },
   'todo-filter': d => { ui.todoArea=d.a;persistViewPrefs();render(); },
   'todo-dir': () => { ui.todoDir=ui.todoDir==='asc'?'desc':'asc';persistViewPrefs();render(); },
   'multi-toggle':()=>{ui.multi=!ui.multi;ui.selected=[];render();},
   'multi-pick':d=>{ui.selected=ui.selected.includes(d.id)?ui.selected.filter(x=>x!==d.id):[...ui.selected,d.id];render();},
+  'multi-del': () => {
+    const n = ui.selected.length;
+    if (!n) return;
+    confirmSheet(`刪除這 ${n} 件待辦？`, '被選取的待辦會永久刪除，無法復原。已完成的紀錄不受影響。', '刪除', () => {
+      state.tasks = state.tasks.filter(t => !ui.selected.includes(t.id));
+      ui.selected = []; ui.multi = false;
+      save(); render(); toast(`已刪除 ${n} 件`);
+    }, true);
+  },
   'multi-move':d=>{state.tasks.filter(t=>ui.selected.includes(t.id)).forEach(t=>{t.bucket=d.b;t.focus=t.focus&&d.b==='today';t.scheduledDate=d.b==='today'?todayKey():null;t.order=nextTaskOrder(d.b);});const n=ui.selected.length;ui.selected=[];ui.multi=false;save();render();toast(`已移動 ${n} 件待辦`);},
   'task-move-open': d => { const t=taskById(d.id); if(t) moveTaskSheet(t); },
   'task-quick-move': d => {
@@ -3890,7 +3994,12 @@ const actions = {
   },
   'repeat-del':d=>confirmSheet('刪除這個週期？','未來不會再自動建立；已經出現的待辦與完成紀錄會保留。','刪除',()=>{state.recurrences=state.recurrences.filter(r=>r.id!==d.id);save();render();toast('已停止週期');},true),
   'repeat-skip-next':d=>{const r=state.recurrences.find(x=>x.id===d.id),k=r&&nextOccurrence(r);if(!r||!k)return;r.skips=r.skips||[];if(!r.skips.includes(k))r.skips.push(k);save();recurrenceSheet(r);toast('已跳過下一次');},
-  'repeat-batch':d=>{const active=d.active==='1';state.recurrences.forEach(r=>r.active=active);save();render();toast(active?'已恢復全部週期':'已暫停全部週期');},
+  'repeat-active': d => {
+    const r = state.recurrences.find(x => x.id === d.id); if (!r) return;
+    r.active = !r.active;
+    if (r.active){ ensureRecurringTasks(todayKey()); }
+    save(); render(); toast(r.active ? '已啟用' : '已暫停');
+  },
 
   /* 習慣 */
   'habit-today': d => { toggleHabit(d.id, todayKey()); if(isChecked(d.id,todayKey())) buzz(10); render(); },
@@ -4003,6 +4112,19 @@ const actions = {
     r.updatedAt = Date.now(); save(); refSheet(d.k); renderSoon();
   },
   'hist-more': () => { ui.histLimit += 20; render(); },
+  'hist-toggle': () => { ui.histOpen = !ui.histOpen; render(); },
+  'ref-save': () => {
+    const ta = $('#refText');
+    if (ta){
+      const k = todayKey();
+      const r = state.reflections[k] || (state.reflections[k] = {});
+      r.text = ta.value; r.updatedAt = Date.now();
+      if (!(ta.value || '').trim() && !r.mood){ delete state.reflections[k]; save(); render(); toast('沒有內容，沒有存'); return; }
+    }
+    ui.refDone = todayKey(); ui.histOpen = true;
+    save(); render(); toast('已儲存 ✓ 收在下面的紀錄裡');
+  },
+  'ref-edit-today': () => { ui.refDone = null; render(); setTimeout(() => { const t = $('#refText'); if (t){ t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 60); },
   'memory-shuffle': () => { ui.memorySeed = (ui.memorySeed||0) + 1; render(); },
 
   /* 目標 */
@@ -4011,6 +4133,14 @@ const actions = {
     const i = open.indexOf(d.id);
     if (i < 0) open.push(d.id); else open.splice(i, 1);
     render();
+  },
+  'goal-pin': d => {
+    const g = goalById(d.id); if (!g) return;
+    if (!g.pinned && state.goals.filter(x => x.pinned && !x.done).length >= 2){
+      toast('今日頁最多釘兩個。先取消一個再釘。'); return;
+    }
+    g.pinned = !g.pinned; save(); render();
+    toast(g.pinned ? '已釘到今日頁 📌' : '已取消釘選');
   },
   'goal-add': () => goalSheet(null),
   'goal-edit': d => { const g = goalById(d.id); if (g) goalSheet(g); },
@@ -4386,7 +4516,7 @@ document.addEventListener('input', e => {
     },300);
   }
   if(el.dataset.input==='week-review'){
-    clearTimeout(el._reviewT);el._reviewT=setTimeout(()=>{const k=currentWeekKey(),r=state.weeklyReviews[k]||(state.weeklyReviews[k]={});r[el.dataset.key]=el.value;r.updatedAt=Date.now();save();flashSaved();},300);
+    clearTimeout(el._reviewT);el._reviewT=setTimeout(()=>{const k=el.dataset.wk||currentWeekKey(),r=state.weeklyReviews[k]||(state.weeklyReviews[k]={});r[el.dataset.key]=el.value;r.updatedAt=Date.now();save();flashSaved();},300);
   }
   if(el.dataset.input==='global-search'){
     clearTimeout(el._globalT);const v=el.value;
@@ -4419,6 +4549,7 @@ document.addEventListener('change',e=>{
   const el=e.target;
   if(el.dataset.change==='todo-sort'){ui.todoSort=el.value;persistViewPrefs();render();}
   if(el.dataset.change==='ref-jump'&&el.value){ refSheet(el.value); el.value=''; }
+  if(el.dataset.change==='qa-date'){ ui.addDate = el.value; }
 });
 let draggedTaskId=null;
 document.addEventListener('dragstart',e=>{const item=e.target.closest('.t-item[draggable="true"]');if(!item)return;draggedTaskId=item.dataset.taskId;item.classList.add('dragging');if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
@@ -4599,7 +4730,7 @@ try{
   if(p.get('add')==='1')launchFocusAdd=true;
   if(location.search)history.replaceState(null,'',location.pathname+location.hash);
 }catch(e){}
-ensureRecurringTasks(todayKey());promoteScheduled(todayKey());
+ensureRecurringTasks(todayKey());promoteScheduled(todayKey());autoClearDone();
 if(!store.loadError){
   if(state.settings.lastAutoBackupDay!==todayKey()){store.autoBackup(state);state.settings.lastAutoBackupDay=todayKey();}
   store.save(state);   /* 把升級後的結構寫回，避免舊格式殘留 */
@@ -4633,7 +4764,7 @@ setTimeout(()=>{
 let lastDay = todayKey();
 function onNewDay(k){
   lastDay = k; ui.hmSel = k; ui.hmOffset = 0; _nextOccCache.clear();
-  ensureRecurringTasks(k); promoteScheduled(k); celebrated = null;
+  ensureRecurringTasks(k); promoteScheduled(k); autoClearDone(); celebrated = null;
   render(); setTimeout(rolloverSheet, 120);
 }
 setInterval(() => { const k = todayKey(); if (k !== lastDay) onNewDay(k); }, 30000);
