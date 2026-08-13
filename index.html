@@ -583,10 +583,6 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .emoji-grid button.on{border-color:var(--acc);background:var(--acc-soft)}
 .emoji-panel{max-height:190px;overflow-y:auto;padding:2px}
 .seg{display:flex;gap:7px;flex-wrap:wrap}
-/* 選項用按鈕的樣子，而不是藥丸狀的 chip —— 同一張卡片裡混兩種形狀會很雜。
-   平均三等分，跟下面那幾排操作按鈕的圓角與高度一致。 */
-.btn-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.btn-seg .btn{padding:10px 6px;font-size:13.5px;border-radius:12px}
 .sheet-actions{display:flex;gap:9px;margin-top:18px}
 .sheet-actions .btn{flex:1}
 .danger-link{width:100%;text-align:center;color:var(--m1);font-size:14px;padding:13px 0 2px}
@@ -690,6 +686,23 @@ body.privacy-blur #app{filter:blur(18px)}
 }
 #updateBanner button.later,#multiTabBar button:last-child{background:transparent;color:var(--sage-deep);padding:6px 4px;font-weight:500}
 
+/* 列印／存成 PDF。不引任何外部函式庫 —— 交給瀏覽器自己的列印管線，
+   離線可用，iPhone 也能在列印預覽裡「分享 → 儲存到檔案」變成 PDF。 */
+#printRoot{display:none}
+@media print{
+  #app,#tabbar,#sheetRoot,#updateBanner,#errorBanner,#toast,#storageBanner,#multiTabBar,#lockScreen{display:none!important}
+  html,body{background:#fff!important;height:auto!important;overflow:visible!important}
+  #printRoot{display:block;color:#000;font-size:11.5pt;line-height:1.85;padding:0}
+  #printRoot h1{font-size:20pt;margin:0 0 2pt;font-weight:700}
+  #printRoot .pr-sub{font-size:9.5pt;color:#555;margin-bottom:16pt}
+  #printRoot .pr-month{font-size:12.5pt;font-weight:700;margin:16pt 0 6pt;padding-bottom:3pt;border-bottom:1pt solid #bbb;break-after:avoid}
+  #printRoot .pr-entry{margin:0 0 11pt;break-inside:avoid}
+  #printRoot .pr-date{font-size:10.5pt;font-weight:700;margin-bottom:2pt}
+  #printRoot .pr-text{white-space:pre-wrap;word-break:break-word}
+  #printRoot .pr-foot{margin-top:20pt;padding-top:6pt;border-top:1pt solid #ddd;font-size:9pt;color:#666}
+  @page{margin:16mm 14mm}
+}
+
 /* 出事時的最後一道防線 */
 #errorBanner{
   position:fixed;left:0;right:0;top:0;z-index:150;
@@ -733,6 +746,7 @@ body.privacy-blur #app{filter:blur(18px)}
 </div>
 <nav id="tabbar" aria-label="主選單"><div class="inner" id="tabInner"></div></nav>
 <div id="sheetRoot"></div>
+<div id="printRoot" aria-hidden="true"></div>
 <div id="updateBanner" hidden></div>
 <div id="errorBanner" hidden></div>
 <div id="toast" role="status"></div>
@@ -773,7 +787,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.13';
+const APP_VERSION = '1.14';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1906,7 +1920,7 @@ function rolloverSheet(){
       return gap <= 1 ? '昨天留下了' : `上次打開是 ${gap} 天前，留下了`;
     })()} ${old.length} 件事。逐件重新安排；這不是失敗，只是讓今天恢復清楚。</p>
     <div style="margin-top:10px;max-height:48dvh;overflow:auto">${old.map(t=>`<div class="repeat-row"><div style="font-size:14.5px;margin-bottom:7px">${esc(t.title)}</div><div class="seg"><button class="chip" data-act="rollover-one" data-id="${t.id}" data-b="today">今天</button><button class="chip" data-act="rollover-one" data-id="${t.id}" data-b="week">本週</button><button class="chip" data-act="rollover-one" data-id="${t.id}" data-b="later">之後</button></div></div>`).join('')}</div>
-    <div class="hint" style="margin-top:10px">也可以一次處理：</div><div class="sheet-actions"><button class="btn plain" data-act="rollover-week">全部本週</button><button class="btn" data-act="rollover-today">全部今天</button></div>`);
+    <div class="hint" style="margin-top:10px">也可以一次處理：</div><div class="sheet-actions"><button class="btn ghost" data-act="rollover-week">全部本週</button><button class="btn ghost" data-act="rollover-today">全部今天</button></div>`);
 }
 
 /* 完成任務 ⇄ 目標步驟連動 */
@@ -2197,7 +2211,7 @@ function timelineSheet(){
     </div>` : ''}
     ${all.length ? `<div class="hint" style="margin-bottom:6px">${year === 'all' ? '走過的痕跡' : `${year} 年`}，共 ${all.length} 件。${year !== 'all' && years.length > 1 ? ` <button class="link" data-act="year-review" data-y="${year}" style="background:none;border:none;padding:0">看 ${year} 年度回顧 ›</button>` : ''}</div>
     <div class="global-results" style="max-height:64dvh">${rows}
-      ${all.length > list.length ? `<button class="btn plain full sm" style="margin:10px 0 4px" data-act="tl-more">看更早的痕跡</button>` : '<div class="hint" style="text-align:center;padding:10px 0 4px">到這裡就是最初了。</div>'}
+      ${all.length > list.length ? `<button class="btn ghost full sm" style="margin:10px 0 4px" data-act="tl-more">看更早的痕跡</button>` : '<div class="hint" style="text-align:center;padding:10px 0 4px">到這裡就是最初了。</div>'}
     </div>`
     : `<div class="empty">${ART.path}還沒有足夠的痕跡<br><span class="hint">立下目標、養成習慣、寫下反思，這條線就會慢慢長出來。</span></div>`}`);
 }
@@ -3039,7 +3053,7 @@ function vReflect(){
     </div>
     <textarea class="field" id="refText" placeholder="${esc(todayPlaceholder())}" data-input="ref-text">${esc(ref.text || '')}</textarea>
     <div class="row" style="margin-top:9px">
-      <button class="btn sm plain" data-act="ref-newpara">＋ 再寫一段</button>
+      <button class="btn plain sm" data-act="ref-newpara">＋ 再寫一段</button>
       <span class="save-state grow" id="saveState">寫下的字會自動儲存</span>
       <button class="btn sm" data-act="ref-save">封存</button>
     </div>`}
@@ -3094,7 +3108,7 @@ function vReflect(){
       hasToday ? '今天那篇就在上面。之後的每一篇，都會收在這裡' : '之後的每一篇，都會收在這裡'
     }</div>`}
     ${Object.keys(state.reflections).length > ui.histLimit && !rq
-      ? '<button class="btn plain full sm" style="margin-top:10px" data-act="hist-more">看更早的紀錄</button>' : ''}` : ''}
+      ? '<button class="btn ghost full sm" style="margin-top:10px" data-act="hist-more">看更早的紀錄</button>' : ''}` : ''}
   </div>`;
 }
 
@@ -3158,9 +3172,9 @@ function goalRecordHTML(r){
         + `<button class="step-more" data-act="goal-toggle-steps" data-id="${r.id}">${open ? '收起' : `走過的 ${steps.length} 步`} ${open ? '▲' : '▼'}</button>`;
     })()}
     <div class="row" style="margin-top:11px">
-      <button class="btn ghost grow" data-act="goal-restart" data-id="${r.id}">再走一次</button>
-      <button class="btn plain" data-act="record-del" data-id="${r.id}" aria-label="刪除這筆完成紀錄">刪除</button>
+      <button class="btn ghost full sm" data-act="goal-restart" data-id="${r.id}">再走一次</button>
     </div>
+    <button class="danger-link" data-act="record-del" data-id="${r.id}">刪除這筆完成紀錄</button>
   </div>`;
 }
 function goalCardHTML(g){
@@ -3421,8 +3435,8 @@ function settingsSection(id){
     body = `${back('備份與還原')}
     <div class="lbl">已完成的待辦</div>
     <div class="hint" style="margin-bottom:6px">超過的會自動清掉最舊的。只影響待辦，習慣與反思的紀錄不受影響。</div>
-    <div class="btn-seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v, lb]) =>
-      `<button class="btn sm ${(state.settings.autoClearDone ?? 30) === v ? '' : 'plain'}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
+    <div class="seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v, lb]) =>
+      `<button class="chip ${(state.settings.autoClearDone ?? 30) === v ? 'on' : ''}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
     <div class="hint">${!persistState.supported
       ? '這個瀏覽器沒有提供長期保存設定，請記得定期備份。'
       : persistState.granted
@@ -3437,6 +3451,9 @@ function settingsSection(id){
       <button class="btn ghost grow" data-act="export-copy">複製文字</button>
       <button class="btn ghost grow" data-act="export-md">可讀版</button>
     </div>
+    <div class="lbl">把反思印出來</div>
+    <div class="hint" style="margin-bottom:7px">把所有反思排成一份文件送去列印。在列印預覽裡選「儲存成 PDF」（iPhone 是分享 → 儲存到檔案）就成了一本可以留著、可以送人的小書。</div>
+    <button class="btn ghost full sm" data-act="print-reflections">整理成一份文件 ›</button>
     <div class="lbl">桌面自動備份</div>
     ${!fsBackup.supported()
       ? '<div class="hint">這個瀏覽器沒有這個能力（目前只有桌面版 Chrome / Edge）。手機請用上面的「備份檔」。</div>'
@@ -3499,7 +3516,7 @@ function settingsSection(id){
       📲 <b>裝到 iPhone 主畫面：</b>用 Safari 開啟本頁 →「分享」→「加入主畫面」，之後就像 App 一樣使用。<br>
       🤖 <b>Android：</b>用 Chrome 開啟 → 選單 →「安裝應用程式」。
     </div>
-    <button class="btn plain full sm" style="margin-top:12px" data-act="shortcuts">電腦版鍵盤快捷鍵</button>
+    <button class="btn ghost full sm" style="margin-top:12px" data-act="shortcuts">電腦版鍵盤快捷鍵</button>
     <div class="lbl">關於</div>
     <div class="hint" style="line-height:1.95">
       這本手帳由 <a class="link" href="https://www.facebook.com/profile.php?id=100084000897269" target="_blank" rel="noopener noreferrer">fb / 指數三寶飯</a> 製作 · v${APP_VERSION}<br>
@@ -3725,6 +3742,35 @@ function exportMarkdown(){
   }
   return L.join('\n');
 }
+/* 把所有反思排成一份可以列印的文件。這裡是唯一會用到 innerHTML 的列印路徑，
+   所有使用者寫的字都走 esc()，跟畫面上其他地方同一套。 */
+function printReflections(){
+  const keys = Object.keys(state.reflections)
+    .filter(k => { const r = state.reflections[k]; return r && (r.mood || (r.text || '').trim()); })
+    .sort();
+  if (!keys.length){ toast('還沒有反思可以匯出'); return; }
+  let lastMonth = '', body = '';
+  keys.forEach(k => {
+    const r = state.reflections[k], d = fromKey(k);
+    const mk = `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+    if (mk !== lastMonth){ lastMonth = mk; body += `<div class="pr-month">${mk}</div>`; }
+    const m = MOODS.find(x => x.v === r.mood);
+    body += `<div class="pr-entry">
+      <div class="pr-date">${d.getMonth() + 1}月${d.getDate()}日 · 週${WD[d.getDay()]}${m ? `　${m.e} ${m.lb}` : ''}</div>
+      ${(r.text || '').trim() ? `<div class="pr-text">${esc(r.text.trim())}</div>` : '<div class="pr-text" style="color:#888">（只記了心情）</div>'}
+    </div>`;
+  });
+  const first = fromKey(keys[0]), last = fromKey(keys[keys.length - 1]);
+  const span = `${first.getFullYear()}年${first.getMonth() + 1}月${first.getDate()}日 — ${last.getFullYear()}年${last.getMonth() + 1}月${last.getDate()}日`;
+  $('#printRoot').innerHTML = `<h1>每日反思</h1>
+    <div class="pr-sub">${esc(span)}　共 ${keys.length} 篇　·　匯出於 ${fmtFull(todayKey())}</div>
+    ${body}
+    <div class="pr-foot">人生手帳 · 所有紀錄都留在你自己的裝置裡</div>`;
+  closeSheet();
+  setTimeout(() => { window.print(); }, 120);
+}
+window.addEventListener('afterprint', () => { const p = $('#printRoot'); if (p) p.innerHTML = ''; });
+
 function downloadText(name, text, mime){
   const blob = new Blob([text], {type:(mime||'text/plain')+';charset=utf-8'});
   const a = document.createElement('a');
@@ -3918,7 +3964,7 @@ function drawLock(msg){
     el.innerHTML = `<div style="font-size:34px">🗝️</div>
       <div class="lk-title">忘記密碼</div>
       <div class="lk-hint">因為手帳沒有把內容加密，也沒有任何伺服器保管密碼，所以沒有其他人能替你解開。<br><br>如果你之前下載過備份檔，可以清除後再匯入，紀錄會完整回來。</div>
-      <button class="btn ghost" data-act="pin-back">回去再想一下</button>
+      <button class="btn" data-act="pin-back">回去再想一下</button>
       <button class="danger-link" data-act="pin-wipe" style="max-width:280px">${lockRT.wipeArmed ? '再按一次，確定清除全部資料' : '清除全部資料，重新開始'}</button>`;
     return;
   }
@@ -4495,6 +4541,7 @@ const actions = {
       toast('備份檔已產生');
     }catch(e){ toast('這個環境無法下載，改用「複製備份文字」'); }
   },
+  'print-reflections': () => printReflections(),
   'export-md': () => {
     try{ downloadText(`人生手帳-${todayKey()}.md`, exportMarkdown(), 'text/markdown'); toast('可讀版已產生'); }
     catch(e){ toast('這個環境無法下載檔案'); }
