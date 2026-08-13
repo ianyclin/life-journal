@@ -583,6 +583,10 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .emoji-grid button.on{border-color:var(--acc);background:var(--acc-soft)}
 .emoji-panel{max-height:190px;overflow-y:auto;padding:2px}
 .seg{display:flex;gap:7px;flex-wrap:wrap}
+/* 選項用按鈕的樣子，而不是藥丸狀的 chip —— 同一張卡片裡混兩種形狀會很雜。
+   平均三等分，跟下面那幾排操作按鈕的圓角與高度一致。 */
+.btn-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.btn-seg .btn{padding:10px 6px;font-size:13.5px;border-radius:12px}
 .sheet-actions{display:flex;gap:9px;margin-top:18px}
 .sheet-actions .btn{flex:1}
 .danger-link{width:100%;text-align:center;color:var(--m1);font-size:14px;padding:13px 0 2px}
@@ -769,7 +773,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.11';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1299,6 +1303,10 @@ const store = (() => {
   catch (e) { ok = false; }
   return {
     ok, loadError:false, saveError:false, bytes:0,
+    /* sig = 我們最後一次讀到或寫入的 checksum。存放區裡的 checksum 跟它不一樣，
+       就表示「有別的視窗（或凍結後被喚醒的另一個實例）寫過東西」。 */
+    sig:null,
+    peekSig(){ try{ return localStorage.getItem(KEY+'_checksum'); }catch(e){ return null; } },
     load(){
       if (!ok) return null;
       try{
@@ -1306,6 +1314,7 @@ const store = (() => {
         const sig=localStorage.getItem(KEY+'_checksum');
         if(sig&&sig!==hashText(raw)){this.loadError=true;return null;}
         this.bytes=raw.length;
+        this.sig=sig||hashText(raw);
         return JSON.parse(raw);
       }catch(e){this.loadError=true;return null;}
     },
@@ -1314,7 +1323,12 @@ const store = (() => {
       if (!ok) return;
       let raw;
       try{ raw = JSON.stringify(data); }catch(e){ return; }
-      const write = () => { localStorage.setItem(KEY,raw); localStorage.setItem(KEY+'_checksum',hashText(raw)); };
+      /* 動手寫之前先看一眼：如果存放區已經被別人換過，這一寫就會蓋掉對方的紀錄。
+         iOS 上首頁 App 與 Safari 分頁可以各自凍結好幾天，醒來時記憶體裡還是舊資料，
+         這時任何一個小動作都會把新的東西整包洗掉 —— 這是唯一會無聲吃掉紀錄的路徑。 */
+      const disk = this.peekSig();
+      if (this.sig && disk && disk !== this.sig){ onForeignWrite(); return; }
+      const write = () => { localStorage.setItem(KEY,raw); localStorage.setItem(KEY+'_checksum',hashText(raw)); this.sig=hashText(raw); };
       try{
         write(); this.bytes=raw.length;
         if(this.saveError){ this.saveError=false; updateStorageBanner(); }
@@ -1333,7 +1347,18 @@ const store = (() => {
     },
     autoBackup(data){
       if(!ok)return;
-      try{const arr=JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY)||'[]');arr.unshift({at:new Date().toISOString(),data});localStorage.setItem(AUTO_BACKUP_KEY,JSON.stringify(arr.slice(0,5)));}catch(e){}
+      try{const arr=JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY)||'[]');arr.unshift({at:new Date().toISOString(),data});localStorage.setItem(AUTO_BACKUP_KEY,JSON.stringify(arr.slice(0,6)));}catch(e){}
+    },
+    /* 一天一個復原點太稀（早上開過就沒了），每存一次做一個又會把深度洗掉
+       —— 六格全被同一個小時佔滿，反而救不回昨天。折衷成「至少隔三小時才留一個」。 */
+    maybeAutoBackup(data){
+      if(!ok)return;
+      try{
+        const arr=JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY)||'[]');
+        const last=arr[0]&&Date.parse(arr[0].at);
+        if(last&&Date.now()-last<3*3600*1000)return;
+        this.autoBackup(data);
+      }catch(e){}
     },
     backups(){try{return JSON.parse(localStorage.getItem(AUTO_BACKUP_KEY)||'[]');}catch(e){return[];}}
   };
@@ -1380,6 +1405,7 @@ const idbMirror={
   async getHandle(){try{const db=await this.open();return await new Promise((res,rej)=>{const r=db.transaction('handles').objectStore('handles').get('backup');r.onsuccess=()=>res(r.result?r.result.h:null);r.onerror=()=>rej(r.error);});}catch(e){return null;}},
   async clearHandle(){try{const db=await this.open();db.transaction('handles','readwrite').objectStore('handles').delete('backup');}catch(e){}},
   async save(raw){try{const db=await this.open();const tx=db.transaction('snapshots','readwrite');tx.objectStore('snapshots').put({at:Date.now(),raw});const all=await new Promise((res,rej)=>{const q=tx.objectStore('snapshots').getAllKeys();q.onsuccess=()=>res(q.result);q.onerror=()=>rej();});all.sort((a,b)=>b-a).slice(10).forEach(k=>tx.objectStore('snapshots').delete(k));}catch(e){}},
+  async list(){try{const db=await this.open();return await new Promise((res,rej)=>{const q=db.transaction('snapshots').objectStore('snapshots').getAll();q.onsuccess=()=>res((q.result||[]).sort((a,b)=>b.at-a.at));q.onerror=()=>rej();});}catch(e){return [];}},
   async latest(){try{const db=await this.open();return await new Promise((res,rej)=>{const q=db.transaction('snapshots').objectStore('snapshots').openCursor(null,'prev');q.onsuccess=()=>res(q.result?q.result.value.raw:null);q.onerror=()=>rej();});}catch(e){return null;}},
   async clear(){try{const db=await this.open();db.transaction('snapshots','readwrite').objectStore('snapshots').clear();}catch(e){}}
 };
@@ -1464,7 +1490,7 @@ function migrate(s){
 }
 const loadedState=store.load();
 let state = Object.assign(defaultState(), migrate(loadedState) || {});
-let pendingRescueRaw=null;
+let pendingRescueRaw=null, snapCache=[];
 async function offerDataRescue(){
   pendingRescueRaw=await idbMirror.latest();
   openSheet(`<h2>找到資料異常</h2><p style="font-size:14px;color:var(--ink2);line-height:1.7">目前主要資料無法完整讀取。${pendingRescueRaw?'已找到最近的安全快照，可以嘗試復原。':'沒有找到可用的裝置快照，請使用先前匯出的備份檔還原。'}</p><div class="sheet-actions">${pendingRescueRaw?'<button class="btn" data-act="rescue-data">復原最近快照</button>':'<button class="btn" data-act="import-file">選擇備份檔</button>'}</div>`);
@@ -1484,30 +1510,44 @@ function save(){
 function flushSave(quick){
   clearTimeout(saveT);
   if (!dirty) return;
+  store.maybeAutoBackup(state);   /* 先留下「改動之前」的樣子，再寫新的 */
   store.save(state);
   dirty = false;
   /* 連結了檔案就順手寫回去，但有最短間隔，不會每打一個字就動硬碟 */
   if (typeof fsBackup !== 'undefined' && fsBackup.linked()) fsBackup.write(!!quick);
 }
-/* 另一個視窗寫了東西：自己這邊沒有未存的字就直接跟上，兩邊自然收斂；
+/* 別處寫了東西：自己這邊沒有未存的字就直接跟上，兩邊自然收斂；
    有未存的字才出聲問，不擅自丟掉任何一邊。 */
+function onForeignWrite(){
+  if (dirty){ showMultiTabBanner(); return; }
+  adoptForeign();
+}
+function adoptForeign(){
+  try{
+    const raw = localStorage.getItem(KEY);
+    const sig = localStorage.getItem(KEY + '_checksum');
+    /* 刻意不走 store.load()：它對不上就會掛起 loadError 叫出救援畫面，
+       但這裡對不上多半只是兩個 key 還沒寫完，下一次檢查就會補上。 */
+    if (!raw || (sig && hashText(raw) !== sig)) return;
+    const m = migrate(JSON.parse(raw));
+    if (!m) return;
+    state = Object.assign(defaultState(), m);
+    store.sig = sig || hashText(raw);
+    dirty = false;
+    render();
+  }catch(err){}
+}
+/* 醒來時主動比對一次。storage 事件只在「分頁活著」時才收得到，
+   被系統凍結那段時間發生的寫入不會補送，所以回到前景一定要自己再看一眼。 */
+function checkForeign(){ if (store.ok && store.sig && store.peekSig() !== store.sig) onForeignWrite(); }
 window.addEventListener('storage', e => {
   /* 聽 checksum 而不是資料本身：store.save() 先寫資料、後寫 checksum，
      在資料那個事件的當下 checksum 還是舊的，比對一定不過。 */
   if (e.key !== KEY + '_checksum' || !e.newValue) return;
-  if (dirty){ showMultiTabBanner(); return; }
-  let m = null;
-  try{
-    const raw = localStorage.getItem(KEY);
-    /* 這裡刻意不走 store.load()：它對不上就會掛起 loadError 叫出救援畫面，
-       但這裡對不上多半只是兩個 key 還沒寫完，下一個事件就會補上。 */
-    if (!raw || hashText(raw) !== e.newValue) return;
-    m = migrate(JSON.parse(raw));
-  }catch(err){ return; }
-  if (!m) return;
-  state = Object.assign(defaultState(), m);
-  render();
+  onForeignWrite();
 });
+window.addEventListener('pageshow', checkForeign);
+window.addEventListener('focus', checkForeign);
 function showMultiTabBanner(){
   if ($('#multiTabBar')) return;
   const bar = document.createElement('div');
@@ -1519,6 +1559,7 @@ function showMultiTabBanner(){
 }
 window.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'hidden'){
+    checkForeign();   /* 凍結期間別處可能寫過東西，先對齊再說 */
     /* 從背景回來 = 重新打開來用，換一句。只換那一句、不整頁重畫，正在打的字不會被吃掉。 */
     nextQuote();
     const el = ui.tab === 'today' && document.querySelector('.greet-quote .qt-tap');
@@ -3394,7 +3435,8 @@ function settingsSection(id){
     body = `${back('備份與還原')}
     <div class="lbl">已完成的待辦</div>
     <div class="hint" style="margin-bottom:6px">超過的會自動清掉最舊的。只影響待辦，習慣與反思的紀錄不受影響。</div>
-    <div class="seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v,lb]) => `<button class="chip ${(state.settings.autoClearDone ?? 30) === v ? 'on' : ''}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
+    <div class="btn-seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v, lb]) =>
+      `<button class="btn sm ${(state.settings.autoClearDone ?? 30) === v ? '' : 'plain'}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
     <div class="hint">${!persistState.supported
       ? '這個瀏覽器沒有提供長期保存設定，請記得定期備份。'
       : persistState.granted
@@ -3434,7 +3476,16 @@ function settingsSection(id){
       <button class="btn plain grow" data-act="import-paste" data-mode="merge">貼上文字</button>
     </div>
     ${hasPreImport() ? '<button class="btn plain full sm" style="margin-top:9px" data-act="restore-pre-import">復原到上次匯入前</button>' : ''}
-    ${autos.length ? `<div class="lbl">自動復原點</div>${autos.slice(0,3).map((b,i) => `<button class="result-item" data-act="restore-auto" data-i="${i}"><span>↶</span><span class="grow"><strong>復原 ${new Date(b.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</strong><span class="hint" style="display:block">保留最近 5 個版本</span></span></button>`).join('')}` : ''}`;
+    <div class="lbl">自動復原點</div>
+    ${autos.length
+      ? autos.map((b, i) => {
+          const n = (d => d ? `${d.tasks ? d.tasks.length : 0} 待辦 · ${d.reflections ? Object.keys(d.reflections).length : 0} 反思 · ${d.goals ? d.goals.length : 0} 目標` : '')(b.data);
+          return `<button class="result-item" data-act="restore-auto" data-i="${i}"><span>↶</span><span class="grow"><strong>${new Date(b.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</strong><span class="hint" style="display:block">${n}</span></span></button>`;
+        }).join('')
+      : '<div class="hint">還沒有復原點。手帳會在你改東西時自動留下，最多六個、至少間隔三小時。</div>'}
+    <div class="lbl">裝置快照</div>
+    <div class="hint" style="margin-bottom:7px">每一次存檔都會在裝置裡留一份，保留最近 10 份。復原點不夠舊的時候用這個。</div>
+    <div id="snapList"><button class="btn ghost full sm" data-act="snap-list">看看有哪些快照</button></div>`;
   }
 
   if (id === 'guard'){
@@ -4170,7 +4221,15 @@ const actions = {
     else state.recurrences.push(Object.assign({id:uid(),createdAt:Date.now(),skips:[]},obj));
     ensureRecurringTasks(todayKey());promoteScheduled(todayKey());save();closeSheet();render();toast(d.id?'週期已更新':'週期待辦已建立');
   },
-  'repeat-del':d=>confirmSheet('刪除這個週期？','未來不會再自動建立；已經出現的待辦與完成紀錄會保留。','刪除',()=>{state.recurrences=state.recurrences.filter(r=>r.id!==d.id);save();render();toast('已停止週期');},true),
+  'repeat-del': d => confirmSheet('刪除這個週期？', '未來不會再自動建立。已經出現的待辦與完成紀錄都會留著，只是變成一般的待辦。', '刪除', () => {
+    state.recurrences = state.recurrences.filter(r => r.id !== d.id);
+    /* 已經產生的那些待辦要斷開連結。留著 recurrenceId 會變成指向不存在週期的孤兒：
+       還掛著「↻ 週期」徽章、編輯卡寫著「修改未來週期 ›」、刪除鍵寫著「只跳過這一次」。 */
+    let n = 0;
+    state.tasks.forEach(t => { if (t.recurrenceId === d.id){ t.recurrenceId = null; t.occurrenceDate = null; n++; } });
+    save(); closeSheet(); render();
+    toast(n ? `已停止週期，${n} 筆變成一般待辦` : '已停止週期');
+  }, true),
   'repeat-skip-next':d=>{const r=state.recurrences.find(x=>x.id===d.id),k=r&&nextOccurrence(r);if(!r||!k)return;r.skips=r.skips||[];if(!r.skips.includes(k))r.skips.push(k);save();recurrenceSheet(r);toast('已跳過下一次');},
   'repeat-active': d => {
     const r = state.recurrences.find(x => x.id === d.id); if (!r) return;
@@ -4280,7 +4339,11 @@ const actions = {
     r.updatedAt = Date.now(); save(); refSheet(d.k); renderSoon();
   },
   'multitab-reload': () => { dirty = false; location.reload(); },
-  'multitab-keep': () => { const b = $('#multiTabBar'); if (b) b.remove(); flushSave(); toast('已保留這個視窗的紀錄'); },
+  'multitab-keep': () => {
+    const b = $('#multiTabBar'); if (b) b.remove();
+    store.sig = store.peekSig();   /* 明確選擇覆蓋，解除擋寫 */
+    dirty = true; flushSave(); toast('已保留這個視窗的紀錄');
+  },
   'hm-habit': d => { ui.hmHabit = d.id || null; render(); },
   'hist-more': () => { ui.histLimit += 20; render(); },
   'hist-toggle': () => { ui.histOpen = !ui.histOpen; render(); },
@@ -4335,12 +4398,17 @@ const actions = {
     g.steps[ia] = other; g.steps[ib] = st;
     save(); stepSheet(d.gid, d.sid); renderSoon(); buzz(8);
   },
-  'step-del': d => confirmSheet('刪除這一步？', '這一步會從目標裡移除；已經排進待辦的那一筆會保留，但不再跟目標連動。', '刪除', () => {
+  /* 一個小步驟就是一行字，重打比多按一次確認還快 —— 不擋。
+     已經排進待辦的那一筆仍然保留，只解除連動，所以真正會失去的只有這行字。 */
+  'step-del': d => {
     const g = goalById(d.gid); if (!g) return;
+    const st = g.steps.find(x => x.id === d.sid);
+    const kept = state.tasks.some(t => t.stepId === d.sid && !t.done);
     g.steps = g.steps.filter(x => x.id !== d.sid);
     state.tasks.forEach(t => { if (t.stepId === d.sid){ t.stepId = null; t.goalId = null; } });
-    save(); render(); toast('已刪除這一步');
-  }, true),
+    save(); closeSheet(); render();
+    toast(kept ? `已刪除「${st ? st.title : '這一步'}」，排入今天的那筆留著` : `已刪除「${st ? st.title : '這一步'}」`);
+  },
   'goal-add': () => goalSheet(null),
   'goal-edit': d => { const g = goalById(d.id); if (g) goalSheet(g); },
   'record-del': d => {
@@ -4625,6 +4693,27 @@ const actions = {
     </div>`); },
   'import-paste-go': () => { const v = ($('#pasteArea') && $('#pasteArea').value || '').trim(); if (v) doImport(v); },
   'restore-pre-import':()=>confirmSheet('復原上次匯入前的資料？','目前內容會被取代；復原完成後仍可再匯入你的備份檔。','復原',()=>{try{const raw=localStorage.getItem(PRE_IMPORT_KEY);const data=raw&&JSON.parse(raw);if(!data)throw 0;state=Object.assign(defaultState(),migrate(data)||data);save();render();toast('已復原匯入前的資料');}catch(e){toast('找不到可復原的資料');}}),
+  'snap-list': async () => {
+    const box = $('#snapList'); if (box) box.innerHTML = '<div class="hint">讀取中…</div>';
+    const list = await idbMirror.list();
+    if (!box) return;
+    if (!list.length){ box.innerHTML = '<div class="hint">這台裝置上沒有找到快照。</div>'; return; }
+    box.innerHTML = list.map((sn, i) => {
+      let n = '';
+      try{ const d = JSON.parse(sn.raw); n = `${(d.tasks||[]).length} 待辦 · ${Object.keys(d.reflections||{}).length} 反思 · ${(d.goals||[]).length} 目標`; }catch(e){ n = '無法讀取'; }
+      return `<button class="result-item" data-act="restore-snap" data-i="${i}"><span>🕘</span><span class="grow"><strong>${new Date(sn.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}</strong><span class="hint" style="display:block">${n}</span></span></button>`;
+    }).join('');
+    snapCache = list;
+  },
+  'restore-snap': d => confirmSheet('復原這份快照？', '目前資料會先再建立一個復原點，然後換成所選的那一份。', '復原', () => {
+    try{
+      const sn = snapCache[Number(d.i)]; if (!sn) throw 0;
+      store.autoBackup(state);
+      state = Object.assign(defaultState(), migrate(JSON.parse(sn.raw)) || {});
+      store.sig = null; dirty = true; flushSave(); render();
+      toast('已復原這份快照');
+    }catch(e){ toast('這份快照讀不出來'); }
+  }),
   'restore-auto':d=>confirmSheet('復原這個自動版本？','目前資料會先再建立一個復原點，然後換成所選版本。','復原',()=>{try{const b=store.backups()[Number(d.i)];if(!b)throw 0;store.autoBackup(state);state=Object.assign(defaultState(),migrate(b.data)||b.data);save();render();toast('已復原自動版本');}catch(e){toast('無法復原這個版本');}}),
   'rescue-data':()=>{try{const data=JSON.parse(pendingRescueRaw);state=Object.assign(defaultState(),migrate(data)||data);store.loadError=false;save();closeSheet();render();toast('已復原最近的安全快照');}catch(e){toast('快照無法讀取，請使用備份檔');}},
   'wipe': () => confirmSheet('清除全部資料？', '所有待辦、習慣、反思與目標將<b>永久刪除</b>。建議先下載備份。', '全部清除', () => {
