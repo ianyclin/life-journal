@@ -769,7 +769,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.9';
+const APP_VERSION = '1.10';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -4371,12 +4371,17 @@ const actions = {
     g.steps[ia] = other; g.steps[ib] = st;
     save(); stepSheet(d.gid, d.sid); renderSoon(); buzz(8);
   },
-  'step-del': d => confirmSheet('刪除這一步？', '這一步會從目標裡移除；已經排進待辦的那一筆會保留，但不再跟目標連動。', '刪除', () => {
+  /* 一個小步驟就是一行字，重打比多按一次確認還快 —— 不擋。
+     已經排進待辦的那一筆仍然保留，只解除連動，所以真正會失去的只有這行字。 */
+  'step-del': d => {
     const g = goalById(d.gid); if (!g) return;
+    const st = g.steps.find(x => x.id === d.sid);
+    const kept = state.tasks.some(t => t.stepId === d.sid && !t.done);
     g.steps = g.steps.filter(x => x.id !== d.sid);
     state.tasks.forEach(t => { if (t.stepId === d.sid){ t.stepId = null; t.goalId = null; } });
-    save(); render(); toast('已刪除這一步');
-  }, true),
+    save(); closeSheet(); render();
+    toast(kept ? `已刪除「${st ? st.title : '這一步'}」，排入今天的那筆留著` : `已刪除「${st ? st.title : '這一步'}」`);
+  },
   'goal-add': () => goalSheet(null),
   'goal-edit': d => { const g = goalById(d.id); if (g) goalSheet(g); },
   'record-del': d => {
