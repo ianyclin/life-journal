@@ -459,7 +459,10 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .s-item{display:flex;align-items:center;gap:10px;padding:8.5px 0;border-bottom:1px dashed var(--line-soft)}
 .s-item:last-child{border-bottom:none}
 .s-item .ck{width:22px;height:22px}
-.s-item .st{font-size:14.5px;word-break:break-word}
+.s-item .st{font-size:14.5px;word-break:break-word;text-align:left;background:none;border:0;padding:0;color:inherit}
+.step-drag{flex:none;padding:4px 0 4px 4px;color:var(--ink3);font-size:14px;cursor:grab;touch-action:none;background:none;border:0}
+.s-item.step-dragging{opacity:.45}
+.s-item.step-over{background:var(--card2);outline:2px dashed var(--acc);outline-offset:-2px;border-radius:8px}
 .s-item.done .st{color:var(--ink3);text-decoration:line-through}
 .s-today{
   flex:none;font-size:11.5px;color:var(--acc);font-weight:600;background:var(--acc-soft);
@@ -494,7 +497,9 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
   font-size:16px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;
 }
 .ring b i{font-style:normal;font-size:10px;font-weight:500;color:var(--ink3);transform:translateY(2.5px);margin-left:.5px}
-.ring b svg{width:17px;height:17px;color:var(--sage)}
+/* 三件都完成時中間放的是打勾。上面 .ring svg 為了讓進度從十二點鐘開始畫，
+   整個 svg 轉了 -90 度 —— 那條規則也會套到這個打勾上，所以要轉回來。 */
+.ring b svg{width:17px;height:17px;color:var(--sage);transform:none}
 .f-item{display:flex;align-items:center;gap:11px;padding:11px 2px;border-bottom:1px dashed var(--line-soft)}
 .f-item:last-of-type{border-bottom:none}
 .f-num{
@@ -764,7 +769,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.6';
+const APP_VERSION = '1.7';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -3159,12 +3164,13 @@ function goalCardHTML(g){
       const hidden = undone.length - shown.length;
       const row = st => {
         const queued = state.tasks.some(t => t.stepId === st.id && !t.done);
-        return `<div class="s-item ${st.done ? 'done' : ''}">
+        return `<div class="s-item ${st.done ? 'done' : ''}" data-step-row="${st.id}">
           <button class="ck ${st.done ? 'on' : ''}" data-act="step-toggle" data-gid="${g.id}" data-sid="${st.id}" aria-label="完成步驟">${ICONS.check}</button>
-          <div class="grow st">${esc(st.title)}</div>
+          <button class="grow st" data-act="step-edit" data-gid="${g.id}" data-sid="${st.id}" aria-label="編輯步驟「${esc(st.title)}」">${esc(st.title)}</button>
           ${st.done ? '' : queued
             ? `<button class="s-today q" data-act="step-unqueue" data-sid="${st.id}" aria-label="取消排入今天">已排入 ↺</button>`
             : `<button class="s-today" data-act="step-queue" data-gid="${g.id}" data-sid="${st.id}">→ 今天</button>`}
+          <button class="step-drag" data-step-drag="${st.id}" data-gid="${g.id}" aria-label="拖曳排序「${esc(st.title)}」">⠿</button>
         </div>`;
       };
       return shown.map(row).join('')
@@ -3183,6 +3189,31 @@ function goalCardHTML(g){
         </div>`}
   </div>`;
 }
+/* 步驟一直只能打勾與排入今天，改名、換順序、刪掉都做不到。
+   列上已經有兩顆按鈕，再塞就太擠 —— 所以點文字開一張小卡，該有的都在裡面。 */
+function stepSheet(gid, sid){
+  const g = goalById(gid); if (!g) return;
+  const st = g.steps.find(x => x.id === sid); if (!st) return;
+  /* 上下移只在「同樣完成狀態」的鄰居之間換位 —— 畫面上未完成的排前面、
+     已完成的收在後面，照整個陣列的索引移動會跳到看不見的地方。 */
+  const sibs = g.steps.filter(x => !!x.done === !!st.done);
+  const i = sibs.indexOf(st);
+  openSheet(`<h2>這一步</h2>
+    <input class="field" id="stTitle" value="${esc(st.title)}" placeholder="這一步要做什麼？" maxlength="40">
+    <div class="lbl">順序</div>
+    <div class="seg">
+      <button class="chip" data-act="step-move" data-gid="${gid}" data-sid="${sid}" data-d="-1" ${i <= 0 ? 'disabled' : ''}>▲ 往前</button>
+      <button class="chip" data-act="step-move" data-gid="${gid}" data-sid="${sid}" data-d="1" ${i >= sibs.length - 1 ? 'disabled' : ''}>▼ 往後</button>
+    </div>
+    <div class="hint" style="margin-top:6px">第 ${i + 1} 步${st.done ? '（已完成的步驟排在未完成的後面）' : `，共 ${sibs.length} 步`}</div>
+    <div class="sheet-actions">
+      <button class="btn plain" data-act="sheet-close">取消</button>
+      <button class="btn" data-act="step-save" data-gid="${gid}" data-sid="${sid}">儲存</button>
+    </div>
+    <button class="danger-link" data-act="step-del" data-gid="${gid}" data-sid="${sid}">刪除這一步</button>`);
+  setTimeout(() => { const i2 = $('#stTitle'); if (i2){ i2.focus(); i2.setSelectionRange(i2.value.length, i2.value.length); } }, 80);
+}
+
 function goalSheet(g){
   const isEdit = !!g;
   openSheet(`
@@ -4282,6 +4313,34 @@ const actions = {
     g.pinned = !g.pinned; save(); render();
     toast(g.pinned ? '已釘到今日頁 📌' : '已取消釘選');
   },
+  'step-edit': d => stepSheet(d.gid, d.sid),
+  'step-save': d => {
+    const g = goalById(d.gid); if (!g) return;
+    const st = g.steps.find(x => x.id === d.sid); if (!st) return;
+    const v = (($('#stTitle') || {}).value || '').trim();
+    if (!v){ toast('步驟不能空白'); return; }
+    st.title = v;
+    /* 已經排進待辦的那一筆也要跟著改，不然兩邊會不一樣 */
+    state.tasks.forEach(t => { if (t.stepId === st.id && !t.done) t.title = v; });
+    save(); closeSheet(); render(); toast('已更新');
+  },
+  'step-move': d => {
+    const g = goalById(d.gid); if (!g) return;
+    const st = g.steps.find(x => x.id === d.sid); if (!st) return;
+    const sibs = g.steps.filter(x => !!x.done === !!st.done);
+    const i = sibs.indexOf(st), j = i + Number(d.d);
+    if (i < 0 || j < 0 || j >= sibs.length) return;
+    const other = sibs[j];
+    const ia = g.steps.indexOf(st), ib = g.steps.indexOf(other);
+    g.steps[ia] = other; g.steps[ib] = st;
+    save(); stepSheet(d.gid, d.sid); renderSoon(); buzz(8);
+  },
+  'step-del': d => confirmSheet('刪除這一步？', '這一步會從目標裡移除；已經排進待辦的那一筆會保留，但不再跟目標連動。', '刪除', () => {
+    const g = goalById(d.gid); if (!g) return;
+    g.steps = g.steps.filter(x => x.id !== d.sid);
+    state.tasks.forEach(t => { if (t.stepId === d.sid){ t.stepId = null; t.goalId = null; } });
+    save(); render(); toast('已刪除這一步');
+  }, true),
   'goal-add': () => goalSheet(null),
   'goal-edit': d => { const g = goalById(d.id); if (g) goalSheet(g); },
   'record-del': d => {
@@ -4750,6 +4809,41 @@ document.addEventListener('pointerup', e => {
   if (i < 0 || j < 0) return;
   list.splice(j, 0, list.splice(i, 1)[0]);
   list.forEach((g, n) => g.order = n);
+  save(); render(); buzz(8); toast('已調整順序');
+});
+
+/* 步驟的拖曳排序。只在同一個目標、同樣完成狀態的步驟之間換位 —— 
+   跨目標拖曳沒有意義，把未完成的拖到已完成區塊也只會讓人困惑。 */
+let stepDrag = null;
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-step-drag]'); if (!h) return;
+  const row = h.closest('[data-step-row]');
+  stepDrag = {id:h.dataset.stepDrag, gid:h.dataset.gid, pointer:e.pointerId, row};
+  try{ h.setPointerCapture && h.setPointerCapture(e.pointerId); }catch(err){}
+  row && row.classList.add('step-dragging');
+  e.preventDefault();
+});
+document.addEventListener('pointermove', e => {
+  if (!stepDrag || e.pointerId !== stepDrag.pointer) return;
+  document.querySelectorAll('.step-over').forEach(x => x.classList.remove('step-over'));
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const t = under && under.closest('[data-step-row]');
+  if (t && t !== stepDrag.row) t.classList.add('step-over');
+  e.preventDefault();
+});
+document.addEventListener('pointerup', e => {
+  if (!stepDrag || e.pointerId !== stepDrag.pointer) return;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const t = under && under.closest('[data-step-row]');
+  document.querySelectorAll('.step-dragging,.step-over').forEach(x => x.classList.remove('step-dragging','step-over'));
+  const {id, gid} = stepDrag; stepDrag = null;
+  if (!t || t.dataset.stepRow === id) return;
+  const g = goalById(gid); if (!g) return;
+  const a = g.steps.find(x => x.id === id), b = g.steps.find(x => x.id === t.dataset.stepRow);
+  if (!a || !b || !!a.done !== !!b.done) return;
+  const ia = g.steps.indexOf(a);
+  g.steps.splice(ia, 1);
+  g.steps.splice(g.steps.indexOf(b), 0, a);
   save(); render(); buzz(8); toast('已調整順序');
 });
 
