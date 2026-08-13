@@ -769,7 +769,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.7';
+const APP_VERSION = '1.8';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -4170,7 +4170,15 @@ const actions = {
     else state.recurrences.push(Object.assign({id:uid(),createdAt:Date.now(),skips:[]},obj));
     ensureRecurringTasks(todayKey());promoteScheduled(todayKey());save();closeSheet();render();toast(d.id?'週期已更新':'週期待辦已建立');
   },
-  'repeat-del':d=>confirmSheet('刪除這個週期？','未來不會再自動建立；已經出現的待辦與完成紀錄會保留。','刪除',()=>{state.recurrences=state.recurrences.filter(r=>r.id!==d.id);save();render();toast('已停止週期');},true),
+  'repeat-del': d => confirmSheet('刪除這個週期？', '未來不會再自動建立。已經出現的待辦與完成紀錄都會留著，只是變成一般的待辦。', '刪除', () => {
+    state.recurrences = state.recurrences.filter(r => r.id !== d.id);
+    /* 已經產生的那些待辦要斷開連結。留著 recurrenceId 會變成指向不存在週期的孤兒：
+       還掛著「↻ 週期」徽章、編輯卡寫著「修改未來週期 ›」、刪除鍵寫著「只跳過這一次」。 */
+    let n = 0;
+    state.tasks.forEach(t => { if (t.recurrenceId === d.id){ t.recurrenceId = null; t.occurrenceDate = null; n++; } });
+    save(); closeSheet(); render();
+    toast(n ? `已停止週期，${n} 筆變成一般待辦` : '已停止週期');
+  }, true),
   'repeat-skip-next':d=>{const r=state.recurrences.find(x=>x.id===d.id),k=r&&nextOccurrence(r);if(!r||!k)return;r.skips=r.skips||[];if(!r.skips.includes(k))r.skips.push(k);save();recurrenceSheet(r);toast('已跳過下一次');},
   'repeat-active': d => {
     const r = state.recurrences.find(x => x.id === d.id); if (!r) return;
