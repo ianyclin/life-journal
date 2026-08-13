@@ -532,7 +532,7 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .qa-areas .chip{font-size:12.5px;padding:5.5px 10px}
 .qa-areas .chip .adot{margin-right:4px}
 
-/* ============ 本週平衡 ============ */
+/* ============ 領域分佈長條（年度回顧用） ============ */
 .bal-row{display:flex;align-items:center;gap:10px;padding:5.5px 0}
 .bal-lb{font-size:13.5px;color:var(--ink2);width:34px;flex:none}
 .bal-bar{flex:1;height:8px;display:flex;align-items:center}
@@ -773,7 +773,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.11';
+const APP_VERSION = '1.13';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1328,6 +1328,24 @@ const store = (() => {
          這時任何一個小動作都會把新的東西整包洗掉 —— 這是唯一會無聲吃掉紀錄的路徑。 */
       const disk = this.peekSig();
       if (this.sig && disk && disk !== this.sig){ onForeignWrite(); return; }
+      /* 縮水守衛：任何一種紀錄的筆數變少，就先把「變少之前」那一份存成復原點。
+         這不預設哪裡會出錯 —— 它假設「我還會再寫出 bug」，但要求每次資料變少
+         都必須留下一條回頭路。待辦不算，因為已完成的自動清理本來就會讓它變少。 */
+      try{
+        const prevRaw = localStorage.getItem(KEY);
+        if (prevRaw){
+          const cnt = d => [
+            Object.keys((d && d.reflections) || {}).length,
+            ((d && d.goals) || []).length,
+            ((d && d.habits) || []).length,
+            ((d && d.goalRecords) || []).length,
+            Object.keys((d && d.habitLog) || {}).length,
+            Object.keys((d && d.weeklyReviews) || {}).length
+          ];
+          const a = cnt(JSON.parse(prevRaw)), b = cnt(data);
+          if (a.some((v, i) => b[i] < v)) this.autoBackup(JSON.parse(prevRaw));
+        }
+      }catch(e){}
       const write = () => { localStorage.setItem(KEY,raw); localStorage.setItem(KEY+'_checksum',hashText(raw)); this.sig=hashText(raw); };
       try{
         write(); this.bytes=raw.length;
@@ -1576,7 +1594,7 @@ const ui = {
   addArea:null, addBucket:'today', todoArea:'all', todoSort:'custom', todoDir:'asc', layoutEdit:false, tlLimit:60,
   todoQuery:'', refQuery:'', refMood:'all', emojiGroup:'推薦', multi:false, selected:[],
   reviewScope:'week', habitTrend:false,
-  histOpen:false, refDone:null, wrOpen:null, goalOpen:[], hmHabit:null
+  histOpen:false, wrOpen:null, goalOpen:[], hmHabit:null
 };
 Object.assign(ui,state.settings.viewPrefs||{});
 function persistViewPrefs(){
@@ -1721,19 +1739,6 @@ function maybeCelebrate(wasAlreadyDone){
   celebrate(); toast(n >= FOCUS_MAX ? '今天的三件重點都完成了 🎉' : `今天排的 ${n} 件重點都完成了 🎉`);
 }
 
-/* 本週平衡：一律由真實紀錄計算（近 7 天完成的事 + 習慣打卡），不預設任何數字 */
-function areaBalance(){
-  const counts = {}; areaList().forEach(a => counts[a.id] = 0);
-  const since = addDays(new Date(), -6); since.setHours(0, 0, 0, 0);
-  const sinceT = since.getTime();
-  state.tasks.forEach(t => { if (t.done && t.area && t.doneAt >= sinceT && counts[t.area] !== undefined) counts[t.area]++; });
-  state.habits.forEach(h => {
-    if (!h.area || counts[h.area] === undefined) return;
-    for (let i = 0; i < 7; i++) if (isChecked(h.id, dkey(addDays(new Date(), -i)))) counts[h.area]++;
-  });
-  const vals = areaList().map(a => counts[a.id]);
-  return {counts, total: vals.reduce((x, y) => x + y, 0), max: Math.max(1, ...vals)};
-}
 function habitMonthCount(hid, y, m){
   let c = 0; const days = new Date(y, m + 1, 0).getDate();
   for (let i = 1; i <= days; i++) if (isChecked(hid, `${y}-${pad(m+1)}-${pad(i)}`)) c++;
@@ -2242,7 +2247,8 @@ function yearSummary(y){
     wroteKeys.push(k);
   });
 
-  /* 領域分佈：完成的事 + 習慣打卡，和「本週平衡」用同一套口徑 */
+  /* 領域分佈：完成的事 + 習慣打卡。一整年的量體才撐得起這種比較 ——
+     同一套口徑放在「一週」上樣本太少，所以那張週卡片已經拿掉了。 */
   const areaCounts = {}; areaList().forEach(a => areaCounts[a.id] = 0);
   state.tasks.forEach(t => {
     if (t.done && t.area && t.doneAt >= fromT && t.doneAt < toT && areaCounts[t.area] !== undefined) areaCounts[t.area]++;
@@ -2344,26 +2350,6 @@ function yearReviewSheet(y){
     </div>`}`);
 }
 
-/* 本週平衡談的是「這幾天把時間放在哪」，所以擺在今日頁的收尾段：
-   反思之後、人生回顧之前。是可拖曳的區塊之一，順序可以自己改。 */
-function balanceCardHTML(){
-  const bal = areaBalance();
-  const meaningful = state.tasks.length + state.habits.length + state.goals.length + Object.keys(state.reflections).length;
-  if (meaningful < 3) return '';
-  const lowArea = bal.total >= 3 ? [...areaList()].sort((a, b) => bal.counts[a.id] - bal.counts[b.id])[0] : null;
-  return `<div class="card">
-    <div class="sec-title">本週平衡</div>
-    ${bal.total >= 3
-      ? areaList().map(a => `<div class="bal-row">
-          <span class="bal-lb">${esc(a.lb)}</span>
-          <span class="bal-bar"><i class="${bal.counts[a.id] ? '' : 'z'}" style="width:${bal.counts[a.id] / bal.max * 100}%;background:${areaColor(a)}"></i></span>
-          <span class="bal-v">${bal.counts[a.id]}</span>
-        </div>`).join('') + `<div class="bal-note">近 7 天完成的事與習慣打卡。平衡不是平均，而是符合你此刻的選擇。</div>
-        ${lowArea ? `<div class="nudge">「${esc(lowArea.lb)}」最近比較安靜。若你也在意，可以替它留一件很小的事。<button data-act="balance-open" data-a="${esc(lowArea.id)}">看看 ›</button></div>` : ''}`
-      : '<div class="hint" style="padding:2px 2px 4px">完成幾件標了領域的事之後，這裡會看見你這週把時間放在哪。</div>'}
-  </div>`;
-}
-
 /* =================== 今日頁的版面 =================== */
 /* 今日頁的每個區塊都可以自己排順序、也可以收起來。
    沒有自訂過的話，順序仍然跟著一天的節奏走（見 todayOrder）。 */
@@ -2373,7 +2359,6 @@ const TODAY_BLOCKS = [
   {id:'habits', lb:'今天的習慣'},
   {id:'upcoming', lb:'接下來的日子'},
   {id:'reflection', lb:'今晚的反思'},
-  {id:'balance', lb:'本週領域平衡'},
   {id:'review', lb:'人生回顧'}
 ];
 const DEFAULT_TODAY_ORDER = TODAY_BLOCKS.map(b => b.id);
@@ -2444,7 +2429,6 @@ function vToday(){
   const phase=hour<11?'早晨':hour<18?'白天':'夜晚';
   const phaseNote=hour<11?'先選定今天最重要的方向，其餘的慢慢來。':hour<18?'回到三件重點，把注意力留給此刻。':'收好未完成的事，也替今天留下一句話。';
   const CIRC = 119.38;   /* 2πr,r=19 */
-  const bal = areaBalance();
   const starter=!state.tasks.length&&!state.habits.length&&!state.goals.length&&!Object.keys(state.reflections).length;
   const meaningful=state.tasks.length+state.habits.length+state.goals.length+Object.keys(state.reflections).length;
   const lastBackup=state.settings.lastBackupAt?new Date(state.settings.lastBackupAt):null;
@@ -2571,7 +2555,6 @@ function vToday(){
   </div>`;
 
   B.review = meaningful>=3?weeklyReviewHTML():'';
-  B.balance = balanceCardHTML();
 
   /* 年末與年初：輕輕邀請你回頭看一整年。可以收起，收起了那一年就不再問。 */
   const yrNow = d.getFullYear();
@@ -3027,7 +3010,9 @@ function vReflect(){
      否則會出現「說有 1 篇、列表卻空的」。 */
   const hasToday = !!(ref.mood || (ref.text || '').trim());
   /* 今天那篇寫完收起來之後也會出現在清單裡 —— 使用者的直覺是「存檔了就該看得到」 */
-  const refDone = hasToday && ui.refDone === tk;
+  /* 封存旗標存在那篇反思裡，不是放在畫面狀態裡 —— 放在記憶體的話重開 App 就沒了，
+     使用者會看到「明明封存過卻又跳出封存按鈕」。 */
+  const refDone = hasToday && !!ref.archived;
   const pastCount = Object.keys(state.reflections).length;
   const hist = Object.keys(state.reflections)
     .filter(k => (ui.refMood==='all'||Number(ui.refMood)===state.reflections[k].mood) && (!rq||`${k} ${state.reflections[k].text||''}`.toLocaleLowerCase('zh-Hant').includes(rq)))
@@ -3054,6 +3039,7 @@ function vReflect(){
     </div>
     <textarea class="field" id="refText" placeholder="${esc(todayPlaceholder())}" data-input="ref-text">${esc(ref.text || '')}</textarea>
     <div class="row" style="margin-top:9px">
+      <button class="btn sm plain" data-act="ref-newpara">＋ 再寫一段</button>
       <span class="save-state grow" id="saveState">寫下的字會自動儲存</span>
       <button class="btn sm" data-act="ref-save">封存</button>
     </div>`}
@@ -4041,7 +4027,6 @@ const actions = {
   'search-go':d=>{closeSheet();go(d.tab);if(d.k)setTimeout(()=>refSheet(d.k),120);},
   'focus-first':()=>{const i=$('#qaFocus');if(i){i.scrollIntoView({behavior:'smooth',block:'center'});setTimeout(()=>i.focus(),250);}},
   'onboard-dismiss':()=>{state.settings.onboardingDismissed=true;save();render();},
-  'balance-open':d=>{ui.todoArea=d.a;go('todo');},
   'review-scope':d=>{ui.reviewScope=d.v;render();setTimeout(()=>{const c=$('#weeklyReviewCard');if(c)c.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'nearest'});},60);},
   'past-reviews': () => pastReviewsSheet(),
   'week-review-open':()=>{const k=currentWeekKey();state.weeklyReviews[k]=state.weeklyReviews[k]||{};ui.wrOpen=k;save();render();setTimeout(()=>{const c=$('#weeklyReviewCard');if(c)c.scrollIntoView({behavior:reduceMotion()?'auto':'smooth',block:'start'});},80);},
@@ -4347,6 +4332,19 @@ const actions = {
   'hm-habit': d => { ui.hmHabit = d.id || null; render(); },
   'hist-more': () => { ui.histLimit += 20; render(); },
   'hist-toggle': () => { ui.histOpen = !ui.histOpen; render(); },
+  /* 早上寫一段、晚上再寫一段。刻意不改資料結構 —— 一天仍然是一篇，
+     只是中間多一條時間分隔線。歷史、搜尋、匯出、合併全部不受影響。 */
+  'ref-newpara': () => {
+    const ta = $('#refText'); if (!ta) return;
+    const d = new Date();
+    const stamp = `—— ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+    const body = ta.value.replace(/\s+$/, '');
+    ta.value = (body ? body + '\n\n' : '') + stamp + '\n';
+    ta.dispatchEvent(new Event('input', {bubbles:true}));
+    autoGrow(ta);
+    ta.focus();
+    ta.setSelectionRange(ta.value.length, ta.value.length);
+  },
   'ref-save': () => {
     const ta = $('#refText');
     if (ta){
@@ -4355,10 +4353,15 @@ const actions = {
       r.text = ta.value; r.updatedAt = Date.now();
       if (!(ta.value || '').trim() && !r.mood){ delete state.reflections[k]; save(); render(); toast('沒有內容，沒有存'); return; }
     }
-    ui.refDone = todayKey(); ui.histOpen = true;
+    const rk = state.reflections[todayKey()]; if (rk) rk.archived = true;
+    ui.histOpen = true;
     save(); render(); toast('已封存 ✓ 收在下面的紀錄裡');
   },
-  'ref-edit-today': () => { ui.refDone = null; render(); setTimeout(() => { const t = $('#refText'); if (t){ t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 60); },
+  'ref-edit-today': () => {
+    const rk = state.reflections[todayKey()]; if (rk) rk.archived = false;
+    save(); render();
+    setTimeout(() => { const t = $('#refText'); if (t){ t.focus(); t.setSelectionRange(t.value.length, t.value.length); } }, 60);
+  },
   'memory-shuffle': () => { ui.memorySeed = (ui.memorySeed||0) + 1; render(); },
 
   /* 目標 */
