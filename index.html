@@ -583,6 +583,10 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .emoji-grid button.on{border-color:var(--acc);background:var(--acc-soft)}
 .emoji-panel{max-height:190px;overflow-y:auto;padding:2px}
 .seg{display:flex;gap:7px;flex-wrap:wrap}
+/* 選項用按鈕的樣子，而不是藥丸狀的 chip —— 同一張卡片裡混兩種形狀會很雜。
+   平均三等分，跟下面那幾排操作按鈕的圓角與高度一致。 */
+.btn-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.btn-seg .btn{padding:10px 6px;font-size:13.5px;border-radius:12px}
 .sheet-actions{display:flex;gap:9px;margin-top:18px}
 .sheet-actions .btn{flex:1}
 .danger-link{width:100%;text-align:center;color:var(--m1);font-size:14px;padding:13px 0 2px}
@@ -3431,7 +3435,8 @@ function settingsSection(id){
     body = `${back('備份與還原')}
     <div class="lbl">已完成的待辦</div>
     <div class="hint" style="margin-bottom:6px">超過的會自動清掉最舊的。只影響待辦，習慣與反思的紀錄不受影響。</div>
-    <div class="seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v,lb]) => `<button class="chip ${(state.settings.autoClearDone ?? 30) === v ? 'on' : ''}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
+    <div class="btn-seg">${[[30,'留 30 筆'],[100,'留 100 筆'],[0,'不自動清']].map(([v, lb]) =>
+      `<button class="btn sm ${(state.settings.autoClearDone ?? 30) === v ? '' : 'plain'}" data-act="autoclear" data-v="${v}">${lb}</button>`).join('')}</div>
     <div class="hint">${!persistState.supported
       ? '這個瀏覽器沒有提供長期保存設定，請記得定期備份。'
       : persistState.granted
