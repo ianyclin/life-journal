@@ -774,7 +774,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1425,10 +1425,10 @@ function migrate(s){
   s.habitLog = s.habitLog || {}; s.reflections = s.reflections || {};
   s.recurrences = s.recurrences || [];
   s.settings = Object.assign(SETTINGS_DEFAULTS(), s.settings || {});
-  /* v7:習慣補上建立日（影響熱度圖分母），待辦補上未來排程日 */
+  /* v7：習慣補上建立日（影響熱度圖分母），待辦補上未來排程日 */
   s.habits.forEach(h => { if (!h.createdAt) h.createdAt = 0; });
   s.tasks.forEach(t => { if (t.dueDate === undefined) t.dueDate = null; if (t.note === undefined) t.note = ''; });
-  /* v8:自訂生活領域。舊資料沒有這個欄位就給預設四個；有的話逐欄清洗，
+  /* v8：自訂生活領域。舊資料沒有這個欄位就給預設四個；有的話逐欄清洗，
      顏色只收調色盤裡的代號，名稱長度設上限 —— 壞掉的備份檔進不來。 */
   s.areas = (Array.isArray(s.areas) && s.areas.length ? s.areas : DEFAULT_AREAS)
     .slice(0, AREA_MAX)
@@ -1855,7 +1855,12 @@ function rolloverSheet(){
   const old = overdueTodayTasks();
   if (!old.length) { state.settings.lastOpenDay=todayKey(); save(); closeSheet(); render(); return; }
   openSheet(`<h2>新的一天</h2>
-    <p style="font-size:14px;color:var(--ink2);line-height:1.7">昨天留下了 ${old.length} 件事。逐件重新安排；這不是失敗，只是讓今天恢復清楚。</p>
+    <p style="font-size:14px;color:var(--ink2);line-height:1.7">${(() => {
+      /* 隔了幾天沒開就別說「昨天」—— 那句話會讓人覺得自己被記錯了 */
+      const last = state.settings.lastOpenDay;
+      const gap = last ? Math.round((fromKey(todayKey()) - fromKey(last)) / 864e5) : 1;
+      return gap <= 1 ? '昨天留下了' : `上次打開是 ${gap} 天前，留下了`;
+    })()} ${old.length} 件事。逐件重新安排；這不是失敗，只是讓今天恢復清楚。</p>
     <div style="margin-top:10px;max-height:48dvh;overflow:auto">${old.map(t=>`<div class="repeat-row"><div style="font-size:14.5px;margin-bottom:7px">${esc(t.title)}</div><div class="seg"><button class="chip" data-act="rollover-one" data-id="${t.id}" data-b="today">今天</button><button class="chip" data-act="rollover-one" data-id="${t.id}" data-b="week">本週</button><button class="chip" data-act="rollover-one" data-id="${t.id}" data-b="later">之後</button></div></div>`).join('')}</div>
     <div class="hint" style="margin-top:10px">也可以一次處理：</div><div class="sheet-actions"><button class="btn plain" data-act="rollover-week">全部本週</button><button class="btn" data-act="rollover-today">全部今天</button></div>`);
 }
@@ -2300,8 +2305,8 @@ function yearReviewSheet(y){
     </div>`}`);
 }
 
-/* 本週平衡本來在今日頁，但它談的是「這幾天做了什麼」，和待辦清單放在一起
-   才看得到因果 —— 所以移到待辦頁的「本週」下方。 */
+/* 本週平衡談的是「這幾天把時間放在哪」，所以擺在今日頁的收尾段：
+   反思之後、人生回顧之前。是可拖曳的區塊之一，順序可以自己改。 */
 function balanceCardHTML(){
   const bal = areaBalance();
   const meaningful = state.tasks.length + state.habits.length + state.goals.length + Object.keys(state.reflections).length;
@@ -2545,7 +2550,7 @@ function vToday(){
 
   B.reflection = `<div class="card pad-s" id="reflectionCard">
     <div class="sec-title">${phase==='夜晚'?'現在，替今天收尾':'今晚的反思'}<span class="right">${rDays > 0 ? `已寫下 ${rDays} 天` : ''}</span></div>
-    ${phase==='夜晚'&&focus.length?`<div class="hint" style="margin:-2px 0 9px">今天的三件重點完成 ${fDone}/${focus.length};沒完成的，明天可以重新安排。</div>`:''}
+    ${phase==='夜晚'&&focus.length?`<div class="hint" style="margin:-2px 0 9px">今天的三件重點完成 ${fDone}/${focus.length}；沒完成的，明天可以重新安排。</div>`:''}
     ${hasRef
       ? `<button class="row" style="width:100%;text-align:left" data-act="tab" data-tab="reflect">
            <span style="font-size:24px">${(MOODS.find(m => m.v === ref.mood) || {e:'📝'}).e}</span>
