@@ -189,6 +189,8 @@ textarea.field{resize:none;min-height:120px;line-height:1.7}
 body.multi-on #app{padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 132px)}
 .repeat-row{padding:10px 1px;border-bottom:1px dashed var(--line-soft)}
 .repeat-row:last-child{border-bottom:none}
+.prompt-chips{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0 3px}
+.prompt-chips .chip{font-size:12.5px;padding:6px 11px}
 .search-wrap{position:relative}
 .ref-jump{flex:none;width:124px;font-size:12.5px;color:var(--ink2);padding-left:9px;padding-right:6px}
 .search-wrap .field{padding-left:38px}
@@ -444,21 +446,6 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .save-state{font-size:12px;color:var(--ink3);margin-top:6px;transition:color .25s}
 .save-state.saving{color:var(--ink2)}
 .save-state.saved{color:var(--sage);font-weight:600}
-.lead-block{margin:12px 0 4px;padding:11px 12px;border-radius:12px;background:var(--card2);border:1px solid var(--line-soft)}
-.lead-head{font-size:11.5px;color:var(--ink3);letter-spacing:.06em;margin-bottom:5px}
-.lead-row{
-  width:100%;display:flex;align-items:flex-start;gap:8px;text-align:left;
-  padding:8px 2px;font-size:13.5px;color:var(--ink2);line-height:1.65;
-  border-bottom:1px dashed var(--line-soft);
-}
-.lead-row:last-child{border-bottom:none}
-.lead-row:active{opacity:.6}
-.lead-arrow{flex:none;color:var(--ink3)}
-.lead-swap{margin-top:6px;font-size:12px;color:var(--ink3);padding:3px 2px}
-.lead-swap:active{color:var(--acc)}
-.prompt-chips{display:flex;gap:7px;overflow-x:auto;padding-bottom:4px;margin:9px 0 2px;scrollbar-width:none}
-.prompt-chips::-webkit-scrollbar{display:none}
-.prompt-chips .chip{flex:none;font-size:12.5px;padding:6px 11px}
 
 /* ============ 目標 ============ */
 .g-title{font-family:var(--serif);font-size:17.5px;font-weight:700}
@@ -774,7 +761,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.5';
+const APP_VERSION = '1.6';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1112,7 +1099,10 @@ const MOODS = [
   {v:4, e:'🙂', lb:'不錯', c:'var(--m4)'},
   {v:5, e:'😄', lb:'很好', c:'var(--m5)'}
 ];
-const PROMPTS = ['今天最感謝的事','今天最有成就感的事','今天學到了什麼','明天想調整的一件事'];
+/* 起頭用的六題。原本四題都偏「產出」（感謝、成就、學到、調整），
+   補上關係與難處兩題 —— 有些日子值得寫的不是做了什麼，是誰陪你、什麼放不下。 */
+const PROMPTS = ['今天最感謝的事','今天最有成就感的事','今天學到了什麼',
+                 '今天和誰的一段話','今天有什麼放不下','明天想調整的一件事'];
 const SUGGEST_HABITS = [
   {e:'🌅', n:'早起', a:'health'},{e:'🏃', n:'運動', a:'health'},{e:'📖', n:'閱讀', a:'self'},{e:'💧', n:'喝水', a:'health'},
   {e:'🧘', n:'冥想', a:'self'},{e:'😴', n:'早睡', a:'health'},{e:'🚶', n:'散步', a:'health'},{e:'✍️', n:'寫日記', a:'self'}
@@ -2958,6 +2948,13 @@ function todayPrompts(){
   return pool.sort((a, b) => a.rank - b.rank);
 }
 
+/* 情境題（從今天的紀錄長出來的那些問句）不再自己佔一塊版面，
+   改成輸入框的提示字：一樣看得到，但不會跟上面那排起頭按鈕重複。 */
+function todayPlaceholder(){
+  const ps = todayPrompts();
+  return ps.length ? ps[0].q : '今天過得如何？寫幾句就好…';
+}
+
 /* =================== 反思頁 =================== */
 function vReflect(){
   const tk = todayKey();
@@ -3003,20 +3000,10 @@ function vReflect(){
       <span class="grow"><strong style="font-size:14.5px;display:block">今天已記錄 ✓</strong><span class="hint">${esc((ref.text || '').split('\n')[0].slice(0, 26) || '只記了心情')}</span></span>
       <span style="color:var(--acc);font-size:13px;font-weight:600">編輯 ›</span>
     </button>` : `
-    ${(() => {
-      const ps = todayPrompts();
-      if (!ps.length) return '';
-      const p = ps[(ui.promptIdx || 0) % ps.length];
-      return `<div class="lead-block">
-        <div class="lead-head">也許可以從這裡寫起</div>
-        <button class="lead-row" data-act="prompt-lead" data-p="${esc(p.lead)}"><span class="grow">${esc(p.q)}</span><span class="lead-arrow">›</span></button>
-        ${ps.length > 1 ? '<button class="lead-swap" data-act="prompt-swap">換一題</button>' : ''}
-      </div>`;
-    })()}
     <div class="prompt-chips">
       ${PROMPTS.map(p => `<button class="chip" data-act="prompt" data-p="${esc(p)}">${p}</button>`).join('')}
     </div>
-    <textarea class="field" id="refText" placeholder="今天過得如何？寫幾句就好…" data-input="ref-text">${esc(ref.text || '')}</textarea>
+    <textarea class="field" id="refText" placeholder="${esc(todayPlaceholder())}" data-input="ref-text">${esc(ref.text || '')}</textarea>
     <div class="row" style="margin-top:9px">
       <span class="save-state grow" id="saveState">寫下的字會自動儲存</span>
       <button class="btn sm" data-act="ref-save">封存</button>
@@ -4227,22 +4214,12 @@ const actions = {
     if (!r.mood && !(r.text || '').trim()) delete state.reflections[k];
     save(); render(); flashSaved();
   },
-  'prompt-swap': () => { ui.promptIdx = (ui.promptIdx || 0) + 1; render(); },
-  'prompt-lead': d => {
-    const ta = $('#refText'); if (!ta) return;
-    if (d.p){
-      ta.value += (ta.value.trim() ? '\n' : '') + d.p;
-      ta.dispatchEvent(new Event('input', {bubbles:true}));
-      autoGrow(ta);
-    }
-    ta.focus();
-    ta.setSelectionRange(ta.value.length, ta.value.length);
-  },
   'prompt': d => {
     const ta = $('#refText'); if (!ta) return;
-    const add = (ta.value.trim() ? '\n' : '') + d.p + ':';
-    ta.value += add; ta.dispatchEvent(new Event('input', {bubbles:true}));
+    ta.value += (ta.value.trim() ? '\n' : '') + d.p + '：';
+    ta.dispatchEvent(new Event('input', {bubbles:true}));
     ta.focus(); autoGrow(ta);
+    ta.setSelectionRange(ta.value.length, ta.value.length);
   },
   'ref-open': d => refSheet(d.k),
   /* 把一篇反思搬到另一天。目標日已經有內容就擋下來 —— 靜靜合併會弄丟東西 */
