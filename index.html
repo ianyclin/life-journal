@@ -189,8 +189,11 @@ textarea.field{resize:none;min-height:120px;line-height:1.7}
 body.multi-on #app{padding-bottom:calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 132px)}
 .repeat-row{padding:10px 1px;border-bottom:1px dashed var(--line-soft)}
 .repeat-row:last-child{border-bottom:none}
-.prompt-chips{display:flex;flex-wrap:wrap;gap:7px;margin:9px 0 3px}
-.prompt-chips .chip{font-size:12.5px;padding:6px 11px}
+/* 兩欄等寬。用 flex-wrap 的話每顆寬度不同，右邊會留下一條參差不齊的空白；
+   排成格子後兩側都對齊，看起來才像是排好的而不是塞不下。 */
+.prompt-chips{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin:9px 0 3px}
+.prompt-chips .chip{font-size:12.5px;padding:7px 6px;justify-content:center;text-align:center;white-space:nowrap}
+body.text-large .prompt-chips .chip{font-size:14px}
 .search-wrap{position:relative}
 .ref-jump{flex:none;width:124px;font-size:12.5px;color:var(--ink2);padding-left:9px;padding-right:6px}
 .search-wrap .field{padding-left:38px}
