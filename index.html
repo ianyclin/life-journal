@@ -456,6 +456,9 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
   border-radius:8px;padding:4.5px 9px;
 }
 .s-today.q{color:var(--ink3);background:var(--card2);font-weight:500}
+.goal-drag{padding:6px 4px;color:var(--ink3);font-size:15px;cursor:grab;touch-action:none;flex:none}
+.goal-card-dragging{opacity:.5}
+.goal-card-over{outline:2.5px dashed var(--acc)!important;outline-offset:3px}
 .step-more{width:100%;text-align:center;font-size:12.5px;color:var(--ink3);padding:9px 0 2px}
 .step-more:active{color:var(--acc)}
 .g-done-badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--sage-deep);background:var(--sage-soft);border-radius:8px;padding:3px 9px;font-weight:600}
@@ -1380,7 +1383,9 @@ function migrate(s){
   Object.keys(s.habitLog || {}).forEach(k => Object.keys(s.habitLog[k] || {}).forEach(id => {
     if (s.habitLog[k][id] === true) s.habitLog[k][id] = 'done';
   }));
-  s.goals = (s.goals||[]).map(g=>Object.assign({area:null,paused:false,lastProgressAt:g.createdAt||Date.now(),recordId:null},g));
+  s.goals = (s.goals||[]).map((g,i)=>Object.assign({area:null,paused:false,lastProgressAt:g.createdAt||Date.now(),recordId:null,horizon:'near',order:i},g));
+  /* v9：期程只收 near / far；order 沒有就照現有順序補 */
+  s.goals.forEach((g,i)=>{ if(g.horizon!=='far') g.horizon='near'; if(!Number.isFinite(g.order)) g.order=i; });
   s.goalRecords=s.goalRecords||[];
   s.goals.filter(g=>g.done).forEach(g=>{
     let rec=s.goalRecords.find(r=>r.sourceGoalId===g.id);
@@ -2785,6 +2790,10 @@ function vReflect(){
   const rnd = anniv.length ? null : randomPastReflection(ui.memorySeed||0);
   const memories = anniv.length ? anniv : (rnd ? [rnd] : []);
   const rq=ui.refQuery.trim().toLocaleLowerCase('zh-Hant');
+  /* 今天那篇在上面的編輯區，所以這裡的清單與計數都不含今天 —— 兩邊口徑要一致，
+     否則會出現「說有 1 篇、列表卻空的」。 */
+  const hasToday = !!(ref.mood || (ref.text || '').trim());
+  const pastCount = Object.keys(state.reflections).filter(k => k !== tk).length;
   const hist = Object.keys(state.reflections)
     .filter(k => k !== tk && (ui.refMood==='all'||Number(ui.refMood)===state.reflections[k].mood) && (!rq||`${k} ${state.reflections[k].text||''}`.toLocaleLowerCase('zh-Hant').includes(rq)))
     .sort().reverse().slice(0, ui.histLimit);
@@ -2795,7 +2804,7 @@ function vReflect(){
   </div>
 
   <div class="card">
-    <div class="sec-title">${fmtFull(tk)}<span class="save-ind" id="saveInd">已儲存 ✓</span></div>
+    <div class="sec-title">${fmtFull(tk)}<button class="right" data-act="ref-open" data-k="${tk}">改日期 ›</button></div>
     <div class="lbl" style="margin-top:2px;font-size:12.5px;color:var(--ink2);font-weight:600">今天的心情</div>
     <div class="moods" style="margin-top:7px">
       ${MOODS.map(m => `<button class="mood-btn ${ref.mood === m.v ? 'on' : ''}" data-act="mood" data-v="${m.v}" aria-label="${m.lb}">${m.e}<span>${m.lb}</span></button>`).join('')}
@@ -2838,21 +2847,34 @@ function vReflect(){
   </div>
 
   <div class="card">
-    <div class="sec-title">過去的紀錄<span class="right">${Object.keys(state.reflections).length} 篇</span></div>
+    <div class="sec-title">過去的紀錄<span class="right">${pastCount} 篇</span></div>
     <div class="search-wrap" style="margin-bottom:10px"><input class="field" id="refSearch" value="${esc(ui.refQuery)}" placeholder="搜尋過去寫下的話…" data-input="ref-search" aria-label="搜尋反思"></div>
+    <div class="row" style="margin-bottom:9px">
+      <span class="hint" style="flex:none">跳到</span>
+      <input class="field grow" type="date" id="refJump" max="${tk}" data-change="ref-jump" aria-label="跳到某一天">
+    </div>
     <div class="toolbar" style="margin-bottom:8px"><button class="chip ${ui.refMood==='all'?'on':''}" data-act="ref-mood-filter" data-v="all">全部</button>${MOODS.map(m=>`<button class="chip ${String(ui.refMood)===String(m.v)?'on':''}" data-act="ref-mood-filter" data-v="${m.v}">${m.e} ${m.lb}</button>`).join('')}</div>
-    ${hist.length ? hist.map(k => {
-      const r = state.reflections[k];
-      const m = MOODS.find(x => x.v === r.mood);
-      const dayFocus=state.tasks.filter(t=>t.focus&&t.scheduledDate===k);
-      return `<button class="r-hist" style="width:100%;text-align:left" data-act="ref-open" data-k="${k}">
-        <span class="mo">${m ? m.e : '📝'}</span>
-        <span class="grow">
-          <span class="dt">${fmtFull(k)}${dayFocus.length?` · 重點 ${dayFocus.filter(t=>t.done).length}/${dayFocus.length}`:''}</span>
-          <span class="tx">${hi(r.text || (m ? '心情：' + m.lb : ''), ui.refQuery)}</span>
-        </span>
-      </button>`;
-    }).join('') : `<div class="empty" style="padding:14px">${ART.moon}之後的每一篇，都會收在這裡</div>`}
+    ${hist.length ? (() => {
+      let lastMonth = '';
+      return hist.map(k => {
+        const r = state.reflections[k];
+        const m = MOODS.find(x => x.v === r.mood);
+        const dayFocus = state.tasks.filter(t => t.focus && t.scheduledDate === k);
+        const d = fromKey(k);
+        const mon = `${d.getFullYear()} 年 ${d.getMonth() + 1} 月`;
+        const head = mon !== lastMonth ? `<div class="tl-head" style="background:var(--card)">${mon}</div>` : '';
+        lastMonth = mon;
+        return head + `<button class="r-hist" style="width:100%;text-align:left" data-act="ref-open" data-k="${k}">
+          <span class="mo">${m ? m.e : '📝'}</span>
+          <span class="grow">
+            <span class="dt">${fmtFull(k)}${dayFocus.length ? ` · 重點 ${dayFocus.filter(t => t.done).length}/${dayFocus.length}` : ''}</span>
+            <span class="tx">${hi(r.text || (m ? '心情：' + m.lb : ''), ui.refQuery)}</span>
+          </span>
+        </button>`;
+      }).join('');
+    })() : `<div class="empty" style="padding:14px">${ART.moon}${
+      hasToday ? '今天那篇就在上面。之後的每一篇，都會收在這裡' : '之後的每一篇，都會收在這裡'
+    }</div>`}
     ${Object.keys(state.reflections).filter(k => k !== tk).length > ui.histLimit && !rq
       ? '<button class="btn plain full sm" style="margin-top:10px" data-act="hist-more">看更早的紀錄</button>' : ''}
   </div>`;
@@ -2867,13 +2889,24 @@ function refSheet(k){
       ${MOODS.map(m => `<button class="mood-btn ${r.mood === m.v ? 'on' : ''}" data-act="sheet-mood" data-k="${k}" data-v="${m.v}">${m.e}<span>${m.lb}</span></button>`).join('')}
     </div>
     <textarea class="field" id="refSheetText" style="margin-top:12px" data-input="ref-sheet" data-k="${k}" placeholder="那天發生了什麼…">${esc(r.text || '')}</textarea>
-    <div class="sheet-actions"><button class="btn full" data-act="sheet-close">完成</button></div>`);
+    <div class="save-state" id="saveState">寫下的字會自動儲存</div>
+    <div class="lbl">這篇屬於哪一天</div>
+    <div class="hint" style="margin-bottom:6px">有時候是隔天才想起來要寫。改成那天，它就會收在那一天。</div>
+    <div class="row">
+      <input class="field grow" type="date" id="refDate" value="${k}" max="${todayKey()}" aria-label="改成哪一天">
+      <button class="btn ghost" data-act="ref-move" data-k="${k}">移動</button>
+    </div>
+    <div class="sheet-actions"><button class="btn full" data-act="sheet-close">完成</button></div>
+    ${(r.mood || (r.text || '').trim()) ? `<button class="danger-link" data-act="ref-del" data-k="${k}">刪除這一篇</button>` : ''}`);
 }
 
 /* =================== 目標頁 =================== */
 function vGoal(){
-  const act = state.goals.filter(g => !g.done && !g.paused);
-  const paused = state.goals.filter(g => !g.done && g.paused);
+  const ord = (a, b) => (a.order ?? 0) - (b.order ?? 0);
+  const act = state.goals.filter(g => !g.done && !g.paused).sort(ord);
+  const near = act.filter(g => g.horizon !== 'far');
+  const far = act.filter(g => g.horizon === 'far');
+  const paused = state.goals.filter(g => !g.done && g.paused).sort(ord);
   const records = [...state.goalRecords].sort((a,b)=>(b.completedAt||0)-(a.completedAt||0));
   return `
   <div class="page-head">
@@ -2885,7 +2918,8 @@ function vGoal(){
     寫下一個你在意的方向<br>再把它拆成幾個小步驟</div>
     <button class="btn full" data-act="goal-add">＋ 建立第一個目標</button></div>`}
 
-  ${act.map(g => goalCardHTML(g)).join('')}
+  ${near.length ? (far.length ? '<div class="sec-title" style="margin:4px 2px 10px">近程 · 一年內</div>' : '') + near.map(g => goalCardHTML(g)).join('') : ''}
+  ${far.length ? `<div class="sec-title" style="margin:${near.length ? '20px' : '4px'} 2px 10px">遠程<span class="right">${far.length} 個</span></div>` + far.map(g => goalCardHTML(g)).join('') : ''}
 
   ${paused.length ? `<div class="sec-title" style="margin:20px 2px 10px">暫時放下<span class="right">${paused.length} 個</span></div>` + paused.map(g=>goalCardHTML(g)).join('') : ''}
 
@@ -2914,12 +2948,13 @@ function goalRecordHTML(r){
 function goalCardHTML(g){
   const p = goalProgress(g);
   const stale=!g.done&&!g.paused&&Date.now()-(g.lastProgressAt||g.createdAt||Date.now())>14*864e5;
-  return `<div class="card">
+  return `<div class="card" data-goal-card="${g.id}">
     <div class="row" style="align-items:flex-start">
       <div class="grow">
         <div class="g-title">${g.done ? '🎉 ' : ''}${esc(g.title)}${g.paused?'<span class="pause-tag">暫停中</span>':''}</div>
         ${g.why ? `<div class="g-why">${esc(g.why)}</div>` : ''}
       </div>
+      <button class="goal-drag" data-goal-drag="${g.id}" aria-label="拖曳排序「${esc(g.title)}」">⠿</button>
       <button class="open-edit" data-act="goal-edit" data-id="${g.id}" aria-label="編輯目標">${ICONS.dots}</button>
     </div>
     <div class="g-prog">
@@ -2970,6 +3005,12 @@ function goalSheet(g){
     <input class="field" id="gWhy" value="${isEdit ? esc(g.why || '') : ''}" placeholder="寫下它對你的意義，累的時候看" maxlength="60">
     <div class="lbl">屬於哪個領域？</div>
     ${areaPickerHTML(isEdit ? g.area : null, 'pick-harea')}
+    <div class="lbl">大概多久</div>
+    <div class="seg">
+      <button class="chip ${(isEdit ? g.horizon : 'near') !== 'far' ? 'on' : ''}" data-act="pick-horizon" data-v="near">近程 · 一年內</button>
+      <button class="chip ${(isEdit ? g.horizon : '') === 'far' ? 'on' : ''}" data-act="pick-horizon" data-v="far">遠程</button>
+    </div>
+    <div class="hint" style="margin-top:6px">近程用來放像專案一樣、有明確步驟的事；遠程放還沒有時間表的方向。</div>
     ${isEdit?`<div class="lbl">目前狀態</div><button class="chip ${g.paused?'':'on'}" data-act="goal-pause" data-paused="${g.paused?'1':'0'}">${g.paused?'已暫停 · 點一下重新開始':'進行中 · 點一下暫停'}</button>`:''}
     ${isEdit ? '' : `<div class="lbl">第一個小步驟（可之後再加）</div>
     <input class="field" id="gStep1" placeholder="例如：這週先跑 2 次 3 公里" maxlength="40">`}
@@ -3879,6 +3920,10 @@ const actions = {
     document.querySelectorAll('#wtSeg .chip').forEach(b => b.classList.remove('on'));
     el.classList.add('on');
   },
+  'pick-horizon': (d, el) => {
+    el.parentElement.querySelectorAll('.chip').forEach(b => b.classList.remove('on'));
+    el.classList.add('on');
+  },
   'pick-harea': (d, el) => {
     el.parentElement.querySelectorAll('.chip').forEach(b => b.classList.remove('on'));
     el.classList.add('on');
@@ -3934,6 +3979,24 @@ const actions = {
     ta.focus(); autoGrow(ta);
   },
   'ref-open': d => refSheet(d.k),
+  /* 把一篇反思搬到另一天。目標日已經有內容就擋下來 —— 靜靜合併會弄丟東西 */
+  'ref-move': d => {
+    const to = ($('#refDate') && $('#refDate').value) || '';
+    if (!to || to === d.k) return;
+    if (to > todayKey()){ toast('不能移到未來的日子'); return; }
+    const target = state.reflections[to];
+    if (target && (target.mood || (target.text || '').trim())){ toast(`${fmtMD(to)} 已經有紀錄了`); return; }
+    const cur = $('#refSheetText');
+    const src = state.reflections[d.k] || {};
+    if (cur) src.text = cur.value;
+    state.reflections[to] = Object.assign({}, src, {updatedAt: Date.now()});
+    delete state.reflections[d.k];
+    save(); render(); refSheet(to); toast(`已移到 ${fmtMD(to)}`);
+  },
+  'ref-del': d => confirmSheet('刪除這一篇？', `${fmtFull(d.k)} 寫下的內容會消失，無法復原。`, '刪除', () => {
+    delete state.reflections[d.k];
+    save(); closeSheet(); render(); toast('已刪除');
+  }, true),
   'sheet-mood': (d, el) => {
     const r = state.reflections[d.k] || (state.reflections[d.k] = {text:''});
     r.mood = r.mood === Number(d.v) ? null : Number(d.v);
@@ -3975,9 +4038,13 @@ const actions = {
     const area = (document.querySelector('[data-act="pick-harea"].on') || {}).dataset?.a || null;
     const pauseBtn=document.querySelector('[data-act="goal-pause"]');
     const paused=pauseBtn?pauseBtn.dataset.paused==='1':false;
-    if (d.id){ const g = goalById(d.id); if (g) Object.assign(g, {title, why, area,paused}); }
+    const hz = (document.querySelector('[data-act="pick-horizon"].on') || {}).dataset?.v || 'near';
+    if (d.id){ const g = goalById(d.id); if (g) Object.assign(g, {title, why, area, paused, horizon:hz}); }
     else {
-      const g = {id:uid(), title, why, area,paused:false, done:false, doneAt:null, createdAt:Date.now(),lastProgressAt:Date.now(), steps:[]};
+      const hz = (document.querySelector('[data-act="pick-horizon"].on') || {}).dataset?.v || 'near';
+      const g = {id:uid(), title, why, area, paused:false, done:false, doneAt:null, horizon:hz,
+        order: Math.min(0, ...state.goals.map(x => x.order ?? 0)) - 1,
+        createdAt:Date.now(), lastProgressAt:Date.now(), steps:[]};
       const s1 = ($('#gStep1') && $('#gStep1').value || '').trim();
       if (s1) g.steps.push({id:uid(), title:s1, done:false});
       state.goals.unshift(g);
@@ -4351,6 +4418,7 @@ document.addEventListener('input', e => {
 document.addEventListener('change',e=>{
   const el=e.target;
   if(el.dataset.change==='todo-sort'){ui.todoSort=el.value;persistViewPrefs();render();}
+  if(el.dataset.change==='ref-jump'&&el.value){ refSheet(el.value); el.value=''; }
 });
 let draggedTaskId=null;
 document.addEventListener('dragstart',e=>{const item=e.target.closest('.t-item[draggable="true"]');if(!item)return;draggedTaskId=item.dataset.taskId;item.classList.add('dragging');if(e.dataTransfer)e.dataTransfer.effectAllowed='move';});
@@ -4366,6 +4434,42 @@ document.addEventListener('drop',e=>{
   list.forEach((x,i)=>x.order=i);t.bucket=bucket;t.focus=t.focus&&bucket==='today';t.scheduledDate=bucket==='today'?todayKey():null;
   ui.todoSort='custom';ui.todoDir='asc';save();render();toast(`已移到${{today:'今天',week:'本週',later:'之後'}[bucket]}`);
 });
+/* 目標排序：同一套 pointer 拖曳，只在同一個期程內互換順序 */
+let goalDrag = null;
+document.addEventListener('pointerdown', e => {
+  const h = e.target.closest('[data-goal-drag]'); if (!h) return;
+  const card = h.closest('[data-goal-card]');
+  goalDrag = {id:h.dataset.goalDrag, pointer:e.pointerId, card};
+  try{ h.setPointerCapture && h.setPointerCapture(e.pointerId); }catch(err){}
+  card && card.classList.add('goal-card-dragging');
+  e.preventDefault();
+});
+document.addEventListener('pointermove', e => {
+  if (!goalDrag || e.pointerId !== goalDrag.pointer) return;
+  document.querySelectorAll('.goal-card-over').forEach(x => x.classList.remove('goal-card-over'));
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const t = under && under.closest('[data-goal-card]');
+  if (t && t !== goalDrag.card) t.classList.add('goal-card-over');
+  e.preventDefault();
+});
+document.addEventListener('pointerup', e => {
+  if (!goalDrag || e.pointerId !== goalDrag.pointer) return;
+  const under = document.elementFromPoint(e.clientX, e.clientY);
+  const t = under && under.closest('[data-goal-card]');
+  document.querySelectorAll('.goal-card-dragging,.goal-card-over').forEach(x => x.classList.remove('goal-card-dragging','goal-card-over'));
+  const from = goalDrag.id; goalDrag = null;
+  if (!t || !t.dataset.goalCard || t.dataset.goalCard === from) return;
+  const a = goalById(from), b = goalById(t.dataset.goalCard);
+  if (!a || !b || a.horizon !== b.horizon) return;   /* 只在同一個期程內排序 */
+  const list = state.goals.filter(g => !g.done && !g.paused && g.horizon === a.horizon)
+    .sort((x, y) => (x.order ?? 0) - (y.order ?? 0));
+  const i = list.indexOf(a), j = list.indexOf(b);
+  if (i < 0 || j < 0) return;
+  list.splice(j, 0, list.splice(i, 1)[0]);
+  list.forEach((g, n) => g.order = n);
+  save(); render(); buzz(8); toast('已調整順序');
+});
+
 /* 今日版面的拖曳：滑鼠與手指共用同一套 pointer 事件，不必分兩種實作 */
 let layDrag=null;
 document.addEventListener('pointerdown',e=>{
