@@ -787,7 +787,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.14';
+const APP_VERSION = '1.15';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1218,7 +1218,11 @@ const pad = n => String(n).padStart(2, '0');
 const dkey = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const fromKey = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
 const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
-const todayKey = () => dkey(new Date());
+/* 一天從凌晨四點開始，不是午夜。晚上十二點半寫的那篇，講的是剛結束的那一天。
+   只影響「現在算哪一天」；顯示時間、問候語、夜晚句庫仍然看真正的時鐘。 */
+const DAY_START_HOUR = 4;
+const logicalNow = () => { const d = new Date(); d.setHours(d.getHours() - DAY_START_HOUR); return d; };
+const todayKey = () => dkey(logicalNow());
 const fmtMD = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.getDate()}日`; };
 const fmtFull = k => { const d = fromKey(k); return `${d.getMonth() + 1}月${d.getDate()}日 · 週${WD[d.getDay()]}`; };
 /* 每次「走到今日頁」換一句 —— 開 App、從別的分頁切回來、從背景回到前景，都算一次。
@@ -1480,6 +1484,14 @@ function migrate(s){
   s.weeklyReviews=s.weeklyReviews||{};
   s.habitLog = s.habitLog || {}; s.reflections = s.reflections || {};
   s.recurrences = s.recurrences || [];
+  /* 孤兒清理：週期被刪掉之後，它產生過的待辦還記著自己屬於某個週期。
+     v1.8 起刪除時會順手清掉，但在那之前刪掉的仍留在資料裡 —— 那些待辦會掛著
+     「↻ 週期」徽章、編輯卡寫著「修改未來週期 ›」（點了沒反應），
+     而週期待辦清單卻是空的。這裡在升級時一次補乾淨。 */
+  {
+    const live = new Set(s.recurrences.map(r => r && r.id));
+    s.tasks.forEach(t => { if (t.recurrenceId && !live.has(t.recurrenceId)){ t.recurrenceId = null; t.occurrenceDate = null; } });
+  }
   s.settings = Object.assign(SETTINGS_DEFAULTS(), s.settings || {});
   /* v7：習慣補上建立日（影響熱度圖分母），待辦補上未來排程日 */
   s.habits.forEach(h => { if (!h.createdAt) h.createdAt = 0; });
@@ -1678,7 +1690,7 @@ function earliestLogKey(){
   return ks.length ? ks.sort()[0] : todayKey();
 }
 function habitStreak(hid){
-  let d = new Date(); let c = 0, guard = 0;
+  let d = logicalNow(); let c = 0, guard = 0;
   const floor = earliestLogKey();
   if (!isChecked(hid, dkey(d))) d = addDays(d, -1);
   while (guard++ < 3660) {
@@ -1691,16 +1703,16 @@ function habitStreak(hid){
   return c;
 }
 /* 本週（週一起算）的打卡次數 —— 比嚴格連續更溫和，也更容易長期維持 */
-function weekStart(from){ const x = new Date(from || new Date()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0,0,0,0); return x; }
+function weekStart(from){ const x = new Date(from || logicalNow()); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); x.setHours(0,0,0,0); return x; }
 function habitWeekCount(hid){
   const s = weekStart(); let c = 0;
-  for (let i = 0; i < 7; i++){ const d = addDays(s, i); if (d > new Date()) break; if (isChecked(hid, dkey(d))) c++; }
+  for (let i = 0; i < 7; i++){ const d = addDays(s, i); if (d > logicalNow()) break; if (isChecked(hid, dkey(d))) c++; }
   return c;
 }
 function habitEverLogged(hid){ return Object.keys(state.habitLog).some(k => state.habitLog[k][hid]); }
 /* 近 N 週的每週次數，用來看長期趨勢 —— 單週好壞不重要，線的走向才重要 */
 function habitWeekSeries(hid, weeks){
-  const s = weekStart(), out = [], now = new Date();
+  const s = weekStart(), out = [], now = logicalNow();
   for (let w = weeks - 1; w >= 0; w--){
     const ws = addDays(s, -7 * w); let c = 0;
     for (let i = 0; i < 7; i++){ const d = addDays(ws, i); if (d > now) break; if (isChecked(hid, dkey(d))) c++; }
@@ -1763,7 +1775,7 @@ function habitMonthCount(hid, y, m){
 function recentWriteDays(n){
   let c = 0;
   for (let i = 0; i < n; i++){
-    const r = state.reflections[dkey(addDays(new Date(), -i))];
+    const r = state.reflections[dkey(addDays(logicalNow(), -i))];
     if (r && (r.mood || (r.text && r.text.trim()))) c++;
   }
   return c;
@@ -1863,7 +1875,7 @@ function nextOccurrence(r){
   const ck = `${todayKey()}|${r.id}|${r.freq}|${r.interval}|${r.startDate}|${r.endDate}|${(r.weekdays||[]).join('')}|${r.monthDay}|${r.nth}|${r.nthWeekday}|${r.yearMonth}|${r.active?1:0}|${(r.skips||[]).length}`;
   if (_nextOccCache.has(ck)) return _nextOccCache.get(ck);
   let found = null;
-  for (let i=0;i<732;i++){ const k=dkey(addDays(new Date(), i)); if (recurrenceDue(r,k)){ found = k; break; } }
+  for (let i=0;i<732;i++){ const k=dkey(addDays(logicalNow(), i)); if (recurrenceDue(r,k)){ found = k; break; } }
   if (_nextOccCache.size > 200) _nextOccCache.clear();
   _nextOccCache.set(ck, found);
   return found;
@@ -2069,7 +2081,7 @@ function rangeSummary(fromKeyStr, toKeyStr){
     moodAvg: moods.length ? (moods.reduce((x,y)=>x+y,0)/moods.length).toFixed(1) : null};
 }
 function scopeRange(scope){
-  const now = new Date();
+  const now = logicalNow();
   if (scope === 'month'){ const s = new Date(now.getFullYear(), now.getMonth(), 1); return [dkey(s), dkey(new Date(now.getFullYear(), now.getMonth()+1, 1)), `${now.getMonth()+1} 月`]; }
   if (scope === 'year'){ return [dkey(new Date(now.getFullYear(),0,1)), dkey(new Date(now.getFullYear()+1,0,1)), `${now.getFullYear()} 年`]; }
   const s = weekStart(); return [dkey(s), dkey(addDays(s,7)), `${fmtMD(dkey(s))} 起`];
@@ -2099,7 +2111,7 @@ function pastReviewsSheet(){
     <div class="sheet-actions"><button class="btn" data-act="sheet-close">關閉</button></div>`);
 }
 function weeklyReviewHTML(){
-  const k=currentWeekKey(),r=state.weeklyReviews[k]||{},sun=new Date().getDay()===0;
+  const k=currentWeekKey(),r=state.weeklyReviews[k]||{},sun=logicalNow().getDay()===0;
   const scope = ui.reviewScope || 'week';
   const [a,b,label] = scopeRange(scope);
   const s = rangeSummary(a,b);
@@ -2108,7 +2120,7 @@ function weeklyReviewHTML(){
     <div class="toolbar" style="margin-bottom:9px" aria-label="回顧範圍">
       ${[['week','本週'],['month','本月'],['year','今年']].map(([v,lb])=>`<button class="chip ${scope===v?'on':''}" data-act="review-scope" data-v="${v}">${lb}</button>`).join('')}
       <button class="chip" data-act="timeline">🕰️ 時光軸</button>
-      <button class="chip" data-act="year-review" data-y="${new Date().getFullYear()}">📅 年度回顧</button>
+      <button class="chip" data-act="year-review" data-y="${logicalNow().getFullYear()}">📅 年度回顧</button>
     </div>
     <div class="review-grid"><div class="review-stat"><b>${s.completed}</b><span>完成的事情</span></div><div class="review-stat"><b>${s.focusDone}/${s.focusTotal||0}</b><span>完成的重點</span></div><div class="review-stat"><b>${s.habitDone}</b><span>習慣打卡</span></div><div class="review-stat"><b>${scope==='week'?s.goalProgress:s.goalsDone}</b><span>${scope==='week'?'推進的目標':'完成的目標'}</span></div><div class="review-stat"><b>${s.reflectDays}</b><span>寫下的日子</span></div><div class="review-stat"><b>${moodTxt}</b><span>平均心情</span></div></div>
     ${(() => {
@@ -2229,7 +2241,7 @@ function dataYears(){
   Object.keys(state.habitLog).forEach(addK);
   Object.keys(state.reflections).forEach(addK);
   Object.keys(state.weeklyReviews).forEach(addK);
-  ys.add(new Date().getFullYear());
+  ys.add(logicalNow().getFullYear());
   return [...ys].sort((a, b) => b - a);
 }
 function yearSummary(y){
@@ -2286,7 +2298,7 @@ function yearSummary(y){
   });
 }
 function yearReviewSheet(y){
-  const year = Number(y) || new Date().getFullYear();
+  const year = Number(y) || logicalNow().getFullYear();
   const years = dataYears();
   const s = yearSummary(year);
   const maxDone = Math.max(1, ...s.months.map(m => m.done));
@@ -2438,8 +2450,8 @@ function vToday(){
   const ref = state.reflections[tk];
   const hasRef = ref && (ref.mood || (ref.text || '').trim());
   const rDays = reflectDays();
-  const d = new Date();
-  const hour=d.getHours();
+  const d = logicalNow();          /* 標題那行日期 */
+  const hour=new Date().getHours(); /* 問候語與夜晚版面看真正的時鐘 */
   const phase=hour<11?'早晨':hour<18?'白天':'夜晚';
   const phaseNote=hour<11?'先選定今天最重要的方向，其餘的慢慢來。':hour<18?'回到三件重點，把注意力留給此刻。':'收好未完成的事，也替今天留下一句話。';
   const CIRC = 119.38;   /* 2πr,r=19 */
@@ -2543,7 +2555,7 @@ function vToday(){
     <div class="sec-title">接下來的日子<span class="right">${upcoming.length} 件已排定</span></div>
     ${upcoming.slice(0,4).map(t=>`<div class="result-item">
       <label class="due-chip due-edit">${dueLabel(t.dueDate)}
-        <input type="date" min="${dkey(addDays(new Date(), 1))}" value="${t.dueDate}" data-change="due-set" data-id="${t.id}" aria-label="改「${esc(t.title)}」的日期">
+        <input type="date" min="${dkey(addDays(logicalNow(), 1))}" value="${t.dueDate}" data-change="due-set" data-id="${t.id}" aria-label="改「${esc(t.title)}」的日期">
       </label>
       <button class="grow" style="text-align:left" data-act="task-edit" data-id="${t.id}"><strong style="font-size:14px;font-weight:550">${esc(t.title)}</strong></button>
       <button data-act="task-edit" data-id="${t.id}" aria-label="編輯這件事">›</button>
@@ -2706,7 +2718,7 @@ function heatLevel(k){
   return f <= .25 ? 1 : f <= .5 ? 2 : f <= .75 ? 3 : 4;
 }
 function heatmapHTML(){
-  const base = new Date();
+  const base = logicalNow();
   const view = new Date(base.getFullYear(), base.getMonth() + ui.hmOffset, 1);
   const y = view.getFullYear(), m = view.getMonth();
   const days = new Date(y, m + 1, 0).getDate();
@@ -2750,8 +2762,8 @@ function vHabit(){
   const habits = activeHabits();
   const tk = todayKey();
   const selKey = ui.hmSel;
-  const last7 = [...Array(7)].map((_, i) => addDays(new Date(), i - 6));
-  const weekReview=new Date().getDay()===0;
+  const last7 = [...Array(7)].map((_, i) => addDays(logicalNow(), i - 6));
+  const weekReview=logicalNow().getDay()===0;
 
   return `
   <div class="page-head">
@@ -2853,7 +2865,7 @@ function habitSheet(h){
 
 /* 往年的今天：同月同日的舊紀錄。沒有的話，就從過去隨機翻一頁出來。 */
 function onThisDay(){
-  const now = new Date(), out = [];
+  const now = logicalNow(), out = [];
   for (let y = 1; y <= 20; y++){
     const d = new Date(now.getFullYear()-y, now.getMonth(), now.getDate());
     if (d.getMonth() !== now.getMonth()) continue;      /* 2/29 之類的日子不硬湊 */
@@ -2885,7 +2897,7 @@ const hashInt = s => { let h = 2166136261; for (let i=0;i<s.length;i++){ h ^= s.
    一次只顯示一條 —— 三條同時出現，日記入口就變成三個未回答的問題。 */
 function todayPrompts(){
   const tk = todayKey();
-  const now = new Date(), hour = now.getHours();
+  const now = logicalNow(), hour = new Date().getHours();
   const ref = state.reflections[tk] || {};
   const written = (ref.text || '').trim();
   const lowMood = ref.mood && ref.mood <= 2;          /* 今天標了糟糕或低落 */
@@ -3008,7 +3020,7 @@ function vReflect(){
   const rs = reflectDays();
   /* 近 30 天心情（左=30天前，右=今天） */
   const strip = [...Array(30)].map((_, i) => {
-    const k = dkey(addDays(new Date(), i - 29));
+    const k = dkey(addDays(logicalNow(), i - 29));
     const r = state.reflections[k];
     const mood = r && r.mood;
     const c = mood ? MOODS.find(m => m.v === mood).c : 'var(--h0)';
@@ -3285,7 +3297,7 @@ function goalSheet(g){
 /* =================== 週期待辦 =================== */
 function recurrenceSheet(r){
   const edit=!!r, start=edit?r.startDate:todayKey(), freq=edit?r.freq:'weekly';
-  const days=edit?(r.weekdays||[]):[new Date().getDay()];
+  const days=edit?(r.weekdays||[]):[logicalNow().getDay()];
   openSheet(`<h2>${edit?'編輯週期待辦':'新增週期待辦'}</h2>
     <div class="lbl">待辦內容</div><input class="field" id="rpTitle" value="${edit?esc(r.title):''}" placeholder="例如：整理本週帳目" maxlength="60">
     <div class="lbl">重複方式</div><div class="seg" id="rfSeg">
@@ -4895,7 +4907,7 @@ document.addEventListener('change',e=>{
     t.dueDate = v;
     /* 往後推到一週以外就收回「之後」—— promoteScheduled 只會往前搬，
        不然改成三週後的事還會留在「本週」裡。 */
-    if (v > dkey(addDays(new Date(), 7)) && t.bucket !== 'later'){
+    if (v > dkey(addDays(logicalNow(), 7)) && t.bucket !== 'later'){
       t.bucket = 'later'; t.focus = false; t.scheduledDate = null; t.order = nextTaskOrder('later');
     }
     promoteScheduled(todayKey()); save(); render(); toast(`已改到 ${dueLabel(v)}`);
