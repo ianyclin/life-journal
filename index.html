@@ -1914,12 +1914,12 @@ function promoteScheduled(k){
 }
 /* 待辦是全 App 唯一沒有停滯感知的地方 —— 目標 14 天沒動會問一句、習慣連休三天會問一句，
    但一件事丟進「本週」可以躺三個月都沒人提。
-   「本週」的事到了那一週的星期天還沒做，就搬進今天（不設重點，不擠掉你早上
+   「本週」的事那一週過完還沒做，下週一搬進今天（不設重點，不擠掉你早上
    親自挑的那三件）；「之後」只標記不搬 —— 那一桶的意思本來就是「還不急」。 */
 const STALE_LATER_DAYS = 60;
 const bucketAge = t => Math.floor((Date.now() - (t.bucketAt || t.createdAt || Date.now())) / 864e5);
-/* 進到「本週」那天算起，第一個「嚴格晚於當天」的星期天就是期限。
-   星期天才放進來的事期限落在下一個星期天 —— 否則隔天就被搬走，
+/* 進到「本週」那天算起，第一個「嚴格晚於當天」的星期天，就是那一週的最後一天。
+   星期天才放進來的事會算到下一個星期天 —— 否則隔天就被搬走，
    而且被退回本週之後會每天在兩桶之間彈來彈去。 */
 function weekDeadline(t){
   const d = new Date(t.bucketAt || t.createdAt || Date.now());
@@ -1932,7 +1932,10 @@ function promoteStale(k){
   const moved = [];
   state.tasks.forEach(t => {
     if (t.done || t.bucket !== 'week' || t.dueDate) return;
-    if (k < weekDeadline(t)) return;       /* 那一週還沒走完 */
+    /* 星期天當天不搬，隔天才搬。週日正好是手帳邀請你寫每週回顧的日子 ——
+       在那個當下把沒做完的事倒進今天，回顧會從「這週肯定自己什麼」
+       變成「我又欠了幾件」。留給新的一週重新安排。 */
+    if (k <= weekDeadline(t)) return;
     t.bucket = 'today'; t.bucketAt = Date.now(); t.scheduledDate = k;
     t.focus = false;                       /* 明講過：搬進來但不設重點 */
     t.order = nextTaskOrder('today');
@@ -2045,7 +2048,7 @@ function tagsHTML(t, o){
   if (t.recurrenceId) tags.push('<span class="t-tag repeat-badge">↻ 週期</span>');
   if ((t.note || '').trim() && !(o && o.showNote)) tags.push('<span class="t-tag">📝 有備註</span>');
   if (t.dueDate && !t.done) tags.push(`<span class="t-tag due-badge">📅 ${dueLabel(t.dueDate)}</span>`);
-  if (t.weekOver && t.staleAt === t.bucketAt && !t.done && t.bucket === 'today') tags.push('<span class="t-tag stale-badge">本週沒做完</span>');
+  if (t.weekOver && t.staleAt === t.bucketAt && !t.done && t.bucket === 'today') tags.push('<span class="t-tag stale-badge">上週排的</span>');
   else if (isStale(t)) tags.push(`<span class="t-tag stale-badge">放了 ${bucketAge(t)} 天</span>`);
   const g = t.goalId ? goalById(t.goalId) : null;
   if (g) tags.push(`<span class="t-tag goal">⚑ ${esc(g.title)}</span>`);
@@ -5168,7 +5171,7 @@ if(!store.loadError){
   store.save(state);   /* 把升級後的結構寫回，避免舊格式殘留 */
 }
 render();
-if (staleMoved.length) setTimeout(() => toast(`${staleMoved.length} 件本週沒做完的事，已排進今天`), 900);
+if (staleMoved.length) setTimeout(() => toast(`${staleMoved.length} 件上週排的事，已排進今天`), 900);
 if(launchFocusAdd){
   const box=$('#qaTodo')||$('#qaFocus')||$('#qaToday');
   if(box){ box.scrollIntoView({block:'center'}); setTimeout(()=>box.focus({preventScroll:true}),60); }
@@ -5199,7 +5202,7 @@ function onNewDay(k){
   lastDay = k; ui.hmSel = k; ui.hmOffset = 0; _nextOccCache.clear();
   ensureRecurringTasks(k); promoteScheduled(k); autoClearDone();
   const sm = promoteStale(k);
-  if (sm.length) setTimeout(() => toast(`${sm.length} 件本週沒做完的事，已排進今天`), 900);
+  if (sm.length) setTimeout(() => toast(`${sm.length} 件上週排的事，已排進今天`), 900);
   celebrated = null;
   render(); setTimeout(rolloverSheet, 120);
 }
