@@ -363,6 +363,8 @@ body.text-large .btn,body.text-large .chip{font-size:15px}
 .t-item .meta{display:flex;gap:5px;margin-top:2px;flex-wrap:wrap}
 .t-tag{display:inline-flex;align-items:center;gap:3px;font-size:11px;color:var(--ink2);background:var(--card2);border:1px solid var(--line-soft);border-radius:6px;padding:1.5px 7px}
 .t-tag.goal{color:var(--sage-deep);background:var(--sage-soft);border-color:transparent}
+/* 放很久了。用最輕的方式說一聲，不用警告色 —— 這不是錯誤，只是一個事實 */
+.t-tag.stale-badge{color:var(--ink3);background:transparent;border-style:dashed}
 .open-edit{padding:6px;color:var(--ink3);flex:none}
 .open-edit svg{width:17px;height:17px}
 .hm-nav svg{width:19px;height:19px}
@@ -787,7 +789,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.15';
+const APP_VERSION = '1.16';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1798,7 +1800,7 @@ function addTask(data){
   const bucket = data.bucket || 'today';
   const t = Object.assign({
     id:uid(), title:'', bucket, area:null, focus:false, done:false, doneAt:null,
-    createdAt:Date.now(), order:nextTaskOrder(bucket), scheduledDate:bucket === 'today' ? todayKey() : null,
+    createdAt:Date.now(), bucketAt:Date.now(), order:nextTaskOrder(bucket), scheduledDate:bucket === 'today' ? todayKey() : null,
     recurrenceId:null, occurrenceDate:null
   }, data);
   if (t.bucket === 'today' && !t.scheduledDate) t.scheduledDate = todayKey();
@@ -1808,7 +1810,7 @@ function addTask(data){
 function reorderTodayTask(taskId,targetId,group){
   const t=taskById(taskId);if(!t)return false;
   if(group==='focus'&&!t.focus&&focusTasks().length>=FOCUS_MAX){toast(`今日重點最多 ${FOCUS_MAX} 件`);return false;}
-  t.bucket='today';t.scheduledDate=todayKey();t.focus=group==='focus';
+  t.bucket='today';t.bucketAt=Date.now();t.scheduledDate=todayKey();t.focus=group==='focus';
   const list=state.tasks.filter(x=>x.id!==t.id&&!x.done&&x.bucket==='today'&&x.focus===t.focus&&(!x.scheduledDate||x.scheduledDate===todayKey())).sort((a,b)=>(a.order??0)-(b.order??0));
   let at=targetId?list.findIndex(x=>x.id===targetId):list.length;if(at<0)at=list.length;list.splice(at,0,t);list.forEach((x,i)=>x.order=i);save();return true;
 }
@@ -1901,14 +1903,43 @@ function promoteScheduled(k){
     if (t.done || !t.dueDate) return;
     if (t.dueDate <= k){
       /* 到了那天，走進今天 */
-      t.bucket = 'today'; t.scheduledDate = k; t.order = nextTaskOrder('today'); t.dueDate = null; n++;
+      t.bucket = 'today'; t.bucketAt = Date.now(); t.scheduledDate = k; t.order = nextTaskOrder('today'); t.dueDate = null; n++;
     } else if (t.dueDate <= soon && t.bucket === 'later'){
       /* 剩一週以內，先浮到本週，讓人有心理準備 */
-      t.bucket = 'week'; t.order = nextTaskOrder('week'); n++;
+      t.bucket = 'week'; t.bucketAt = Date.now(); t.order = nextTaskOrder('week'); n++;
     }
   });
   if (n) store.save(state);
   return n;
+}
+/* 待辦是全 App 唯一沒有停滯感知的地方 —— 目標 14 天沒動會問一句、習慣連休三天會問一句，
+   但一件事丟進「本週」可以躺三個月都沒人提。
+   「本週」的事到了那一週的星期天還沒做，就搬進今天（不設重點，不擠掉你早上
+   親自挑的那三件）；「之後」只標記不搬 —— 那一桶的意思本來就是「還不急」。 */
+const STALE_LATER_DAYS = 60;
+const bucketAge = t => Math.floor((Date.now() - (t.bucketAt || t.createdAt || Date.now())) / 864e5);
+/* 進到「本週」那天算起，第一個「嚴格晚於當天」的星期天就是期限。
+   星期天才放進來的事期限落在下一個星期天 —— 否則隔天就被搬走，
+   而且被退回本週之後會每天在兩桶之間彈來彈去。 */
+function weekDeadline(t){
+  const d = new Date(t.bucketAt || t.createdAt || Date.now());
+  d.setHours(d.getHours() - DAY_START_HOUR);
+  d.setHours(0, 0, 0, 0);
+  return dkey(addDays(d, (7 - d.getDay()) % 7 || 7));
+}
+const isStale = t => !t.done && !t.dueDate && t.bucket === 'later' && bucketAge(t) >= STALE_LATER_DAYS;
+function promoteStale(k){
+  const moved = [];
+  state.tasks.forEach(t => {
+    if (t.done || t.bucket !== 'week' || t.dueDate) return;
+    if (k < weekDeadline(t)) return;       /* 那一週還沒走完 */
+    t.bucket = 'today'; t.bucketAt = Date.now(); t.scheduledDate = k;
+    t.focus = false;                       /* 明講過：搬進來但不設重點 */
+    t.order = nextTaskOrder('today');
+    t.weekOver = true; t.staleAt = t.bucketAt;   /* 讓那一列說得出自己為什麼在這裡 */
+    moved.push(t);
+  });
+  return moved;
 }
 function upcomingTasks(){
   const tk = todayKey();
@@ -2014,6 +2045,8 @@ function tagsHTML(t, o){
   if (t.recurrenceId) tags.push('<span class="t-tag repeat-badge">↻ 週期</span>');
   if ((t.note || '').trim() && !(o && o.showNote)) tags.push('<span class="t-tag">📝 有備註</span>');
   if (t.dueDate && !t.done) tags.push(`<span class="t-tag due-badge">📅 ${dueLabel(t.dueDate)}</span>`);
+  if (t.weekOver && t.staleAt === t.bucketAt && !t.done && t.bucket === 'today') tags.push('<span class="t-tag stale-badge">本週沒做完</span>');
+  else if (isStale(t)) tags.push(`<span class="t-tag stale-badge">放了 ${bucketAge(t)} 天</span>`);
   const g = t.goalId ? goalById(t.goalId) : null;
   if (g) tags.push(`<span class="t-tag goal">⚑ ${esc(g.title)}</span>`);
   if (o && o.showBucket && !t.done) tags.push(`<span class="t-tag">${{today:'今天', week:'本週', later:'之後'}[t.bucket]}</span>`);
@@ -2673,7 +2706,7 @@ function vTodo(){
   ${buckets.map(b => {
     const list = open.filter(t => t.bucket === b.id).sort(taskCompare);
     return `<div class="card drop-zone" data-bucket="${b.id}">
-      <div class="sec-title">${b.lb}<span class="right">${list.length} 件${b.id === 'today' && focusTasks().length ? ` · 重點 ${focusTasks().length}/${FOCUS_MAX}` : ''}</span></div>
+      <div class="sec-title">${b.lb}<span class="right">${list.length} 件${b.id === 'today' && focusTasks().length ? ` · 重點 ${focusTasks().length}/${FOCUS_MAX}` : ''}${b.id === 'later' && list.filter(isStale).length ? ` · ${list.filter(isStale).length} 件放很久` : ''}</span></div>
       ${list.length ? list.map(t => taskItemHTML(t, {moveQuick:!ui.multi,draggable:!ui.multi&&ui.todoSort==='custom',multi:ui.multi,focusBtn:!ui.multi&&b.id==='today',showNote:true,hl:ui.todoQuery})).join('') : `<div class="hint" style="padding:4px 2px 6px">${b.hint}</div>`}
     </div>`;
   }).join('')}
@@ -4162,7 +4195,7 @@ const actions = {
     let lostFocus = 0;
     state.tasks.filter(t => ui.selected.includes(t.id)).forEach(t => {
       if (t.focus && d.b !== 'today') lostFocus++;
-      t.bucket = d.b; t.focus = t.focus && d.b === 'today';
+      t.bucket = d.b; t.bucketAt = Date.now(); t.focus = t.focus && d.b === 'today';
       t.scheduledDate = d.b === 'today' ? todayKey() : null; t.order = nextTaskOrder(d.b);
     });
     const n = ui.selected.length;
@@ -4174,7 +4207,7 @@ const actions = {
   'task-quick-move': d => {
     const t=taskById(d.id); if(!t)return;
     const lost = t.focus && d.b !== 'today';   /* 重點只屬於今天，但不該默默消失 */
-    t.bucket=d.b; t.focus=t.focus&&d.b==='today';
+    t.bucket=d.b; t.bucketAt=Date.now(); t.focus=t.focus&&d.b==='today';
     t.scheduledDate=d.b==='today'?todayKey():null; t.order=nextTaskOrder(d.b); save(); closeSheet(); render();
     toast(`已移到${{today:'今天',week:'本週',later:'之後'}[d.b]}${lost ? '，今日重點標記已取消' : ''}`);
   },
@@ -4193,7 +4226,7 @@ const actions = {
     if (!t.focus && !canAddFocus()) { toast(`今日重點最多 ${FOCUS_MAX} 件，先完成或移出一件`); return; }
     if (d.sheet) stashTaskSheet(t);
     t.focus = !t.focus;
-    if (t.focus) { t.bucket = 'today'; t.scheduledDate=todayKey(); }
+    if (t.focus) { t.bucket = 'today'; t.bucketAt = Date.now(); t.scheduledDate=todayKey(); }
     save();
     if (d.sheet) { taskSheet(t); renderSoon(); } else render();
   },
@@ -4204,12 +4237,12 @@ const actions = {
     if (t.done) buzz(10);
     save(); render(); maybeCelebrate(was);
   },
-  'task-pull': d => { const t = taskById(d.id); if (!t) return; t.bucket='today'; t.scheduledDate=todayKey(); t.order=nextTaskOrder('today'); save(); render(); toast('已排入今天'); },
+  'task-pull': d => { const t = taskById(d.id); if (!t) return; t.bucket='today'; t.bucketAt=Date.now(); t.scheduledDate=todayKey(); t.order=nextTaskOrder('today'); save(); render(); toast('已排入今天'); },
   'task-edit': d => { const t = taskById(d.id); if (t) taskSheet(t); },
   'task-move': d => {
     const t = taskById(d.id); if (!t) return;
     stashTaskSheet(t);
-    t.bucket=d.b; t.focus=t.focus&&d.b==='today'; t.scheduledDate=d.b==='today'?todayKey():null; t.order=nextTaskOrder(d.b); save(); taskSheet(t);
+    t.bucket=d.b; t.bucketAt=Date.now(); t.focus=t.focus&&d.b==='today'; t.scheduledDate=d.b==='today'?todayKey():null; t.order=nextTaskOrder(d.b); save(); taskSheet(t);
   },
   'task-save': d => {
     const t = taskById(d.id); if (!t) return;
@@ -4219,10 +4252,10 @@ const actions = {
     const due = ($('#tDue') && $('#tDue').value) || '';
     if (due && due > todayKey()){
       t.dueDate = due;
-      if (t.bucket === 'today'){ t.bucket = 'later'; t.focus = false; t.scheduledDate = null; t.order = nextTaskOrder('later'); }
+      if (t.bucket === 'today'){ t.bucket = 'later'; t.bucketAt = Date.now(); t.focus = false; t.scheduledDate = null; t.order = nextTaskOrder('later'); }
       toast(`已排到 ${dueLabel(due)}`);
     } else if (due && due <= todayKey()){
-      t.dueDate = null; t.bucket = 'today'; t.scheduledDate = todayKey();
+      t.dueDate = null; t.bucket = 'today'; t.bucketAt = Date.now(); t.scheduledDate = todayKey();
     } else t.dueDate = null;
     save(); closeSheet(); render();
   },
@@ -4239,8 +4272,8 @@ const actions = {
     state.tasks = state.tasks.filter(t => !t.done); save(); render();
   }, true),
   'rollover-today':()=>{ overdueTodayTasks().forEach(t=>t.scheduledDate=todayKey()); state.settings.lastOpenDay=todayKey(); save(); closeSheet(); render(); },
-  'rollover-week':()=>{ overdueTodayTasks().forEach(t=>{t.bucket='week';t.focus=false;t.scheduledDate=null;t.order=nextTaskOrder('week');}); state.settings.lastOpenDay=todayKey(); save(); closeSheet(); render(); },
-  'rollover-one':d=>{const t=taskById(d.id);if(!t)return;t.bucket=d.b;t.focus=t.focus&&d.b==='today';t.scheduledDate=d.b==='today'?todayKey():null;t.order=nextTaskOrder(d.b);save();rolloverSheet();},
+  'rollover-week':()=>{ overdueTodayTasks().forEach(t=>{t.bucket='week';t.bucketAt=Date.now();t.focus=false;t.scheduledDate=null;t.order=nextTaskOrder('week');}); state.settings.lastOpenDay=todayKey(); save(); closeSheet(); render(); },
+  'rollover-one':d=>{const t=taskById(d.id);if(!t)return;t.bucket=d.b;t.bucketAt=Date.now();t.focus=t.focus&&d.b==='today';t.scheduledDate=d.b==='today'?todayKey():null;t.order=nextTaskOrder(d.b);save();rolloverSheet();},
 
   /* 週期待辦 */
   'repeat-add':()=>recurrenceSheet(null),
@@ -4908,7 +4941,7 @@ document.addEventListener('change',e=>{
     /* 往後推到一週以外就收回「之後」—— promoteScheduled 只會往前搬，
        不然改成三週後的事還會留在「本週」裡。 */
     if (v > dkey(addDays(logicalNow(), 7)) && t.bucket !== 'later'){
-      t.bucket = 'later'; t.focus = false; t.scheduledDate = null; t.order = nextTaskOrder('later');
+      t.bucket = 'later'; t.bucketAt = Date.now(); t.focus = false; t.scheduledDate = null; t.order = nextTaskOrder('later');
     }
     promoteScheduled(todayKey()); save(); render(); toast(`已改到 ${dueLabel(v)}`);
   }
@@ -4924,7 +4957,7 @@ document.addEventListener('drop',e=>{
   const t=taskById(draggedTaskId),bucket=zone.dataset.bucket,target=e.target.closest('.t-item[data-task-id]');if(!t)return;
   const list=state.tasks.filter(x=>!x.done&&x.bucket===bucket&&x.id!==t.id).sort((a,b)=>(a.order??0)-(b.order??0));
   const at=target?Math.max(0,list.findIndex(x=>x.id===target.dataset.taskId)):list.length;list.splice(at<0?list.length:at,0,t);
-  list.forEach((x,i)=>x.order=i);t.bucket=bucket;t.focus=t.focus&&bucket==='today';t.scheduledDate=bucket==='today'?todayKey():null;
+  list.forEach((x,i)=>x.order=i);t.bucket=bucket;t.bucketAt=Date.now();t.focus=t.focus&&bucket==='today';t.scheduledDate=bucket==='today'?todayKey():null;
   ui.todoSort='custom';ui.todoDir='asc';save();render();toast(`已移到${{today:'今天',week:'本週',later:'之後'}[bucket]}`);
 });
 /* 目標排序：同一套 pointer 拖曳，只在同一個期程內互換順序 */
@@ -5043,7 +5076,7 @@ document.addEventListener('pointermove',e=>{
 document.addEventListener('pointerup',e=>{
   if(!touchDrag||e.pointerId!==touchDrag.pointer)return;const under=document.elementFromPoint(e.clientX,e.clientY);const target=under&&under.closest('[data-task-id]');const todayZone=under&&under.closest('.today-drop-zone');const todoZone=under&&under.closest('.drop-zone');
   if(touchDrag.moved&&todayZone){reorderTodayTask(touchDrag.id,target&&target.dataset.taskId,todayZone.dataset.todayGroup);render();toast('已調整今天的順序');}
-  else if(touchDrag.moved&&todoZone){const t=taskById(touchDrag.id);if(t){const lost=t.focus&&todoZone.dataset.bucket!=='today';t.bucket=todoZone.dataset.bucket;t.focus=t.focus&&t.bucket==='today';t.scheduledDate=t.bucket==='today'?todayKey():null;t.order=nextTaskOrder(t.bucket);save();render();toast(`已移動待辦${lost?'，今日重點標記已取消':''}`);}}
+  else if(touchDrag.moved&&todoZone){const t=taskById(touchDrag.id);if(t){const lost=t.focus&&todoZone.dataset.bucket!=='today';t.bucket=todoZone.dataset.bucket;t.bucketAt=Date.now();t.focus=t.focus&&t.bucket==='today';t.scheduledDate=t.bucket==='today'?todayKey():null;t.order=nextTaskOrder(t.bucket);save();render();toast(`已移動待辦${lost?'，今日重點標記已取消':''}`);}}
   document.querySelectorAll('.touch-dragging,.drag-target').forEach(x=>x.classList.remove('touch-dragging','drag-target'));touchDrag=null;
 });
 $('#importFile').addEventListener('change', e => {
@@ -5128,12 +5161,14 @@ try{
   if(location.search)history.replaceState(null,'',location.pathname+location.hash);
 }catch(e){}
 ensureRecurringTasks(todayKey());promoteScheduled(todayKey());autoClearDone();
+const staleMoved = promoteStale(todayKey());
 nextQuote();   /* 每次打開就是新的一句 */
 if(!store.loadError){
   if(state.settings.lastAutoBackupDay!==todayKey()){store.autoBackup(state);state.settings.lastAutoBackupDay=todayKey();}
   store.save(state);   /* 把升級後的結構寫回，避免舊格式殘留 */
 }
 render();
+if (staleMoved.length) setTimeout(() => toast(`${staleMoved.length} 件本週沒做完的事，已排進今天`), 900);
 if(launchFocusAdd){
   const box=$('#qaTodo')||$('#qaFocus')||$('#qaToday');
   if(box){ box.scrollIntoView({block:'center'}); setTimeout(()=>box.focus({preventScroll:true}),60); }
@@ -5162,7 +5197,10 @@ setTimeout(()=>{
 let lastDay = todayKey();
 function onNewDay(k){
   lastDay = k; ui.hmSel = k; ui.hmOffset = 0; _nextOccCache.clear();
-  ensureRecurringTasks(k); promoteScheduled(k); autoClearDone(); celebrated = null;
+  ensureRecurringTasks(k); promoteScheduled(k); autoClearDone();
+  const sm = promoteStale(k);
+  if (sm.length) setTimeout(() => toast(`${sm.length} 件本週沒做完的事，已排進今天`), 900);
+  celebrated = null;
   render(); setTimeout(rolloverSheet, 120);
 }
 setInterval(() => { const k = todayKey(); if (k !== lastDay) onNewDay(k); }, 30000);
