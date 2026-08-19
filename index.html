@@ -675,18 +675,18 @@ body.privacy-blur #app{filter:blur(18px)}
 .set-back:active{opacity:.6}
 
 /* 有新版時的提示。放在最上面、不擋操作，點一下才更新 */
-#updateBanner,#multiTabBar{
+#updateBanner,#multiTabBar,#handoffBar{
   position:fixed;left:0;right:0;top:0;z-index:140;
   padding:calc(env(safe-area-inset-top) + 11px) 16px 11px;
   background:var(--sage-soft);border-bottom:1px solid var(--sage);color:var(--sage-deep);
   font-size:13.5px;line-height:1.6;display:flex;align-items:center;gap:10px;
 }
-#updateBanner .grow,#multiTabBar .grow{flex:1;min-width:0}
-#updateBanner button,#multiTabBar button{
+#updateBanner .grow,#multiTabBar .grow,#handoffBar .grow{flex:1;min-width:0}
+#updateBanner button,#multiTabBar button,#handoffBar button{
   flex:none;background:var(--sage);color:#fff;font-weight:650;font-size:13px;
   padding:6px 13px;border-radius:10px;
 }
-#updateBanner button.later,#multiTabBar button:last-child{background:transparent;color:var(--sage-deep);padding:6px 4px;font-weight:500}
+#updateBanner button.later,#multiTabBar button:last-child,#handoffBar button:last-child{background:transparent;color:var(--sage-deep);padding:6px 4px;font-weight:500}
 
 /* 列印／存成 PDF。不引任何外部函式庫 —— 交給瀏覽器自己的列印管線，
    離線可用，iPhone 也能在列印預覽裡「分享 → 儲存到檔案」變成 PDF。 */
@@ -749,6 +749,7 @@ body.privacy-blur #app{filter:blur(18px)}
 <nav id="tabbar" aria-label="主選單"><div class="inner" id="tabInner"></div></nav>
 <div id="sheetRoot"></div>
 <div id="printRoot" aria-hidden="true"></div>
+<div id="handoffBar" hidden></div>
 <div id="updateBanner" hidden></div>
 <div id="errorBanner" hidden></div>
 <div id="toast" role="status"></div>
@@ -789,7 +790,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.17';
+const APP_VERSION = '1.18';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -1606,6 +1607,7 @@ function showMultiTabBanner(){
 window.addEventListener('visibilitychange', () => {
   if (document.visibilityState !== 'hidden'){
     checkForeign();   /* 凍結期間別處可能寫過東西，先對齊再說 */
+    checkHandoff();
     /* 從背景回來 = 重新打開來用，換一句。只換那一句、不整頁重畫，正在打的字不會被吃掉。 */
     nextQuote();
     const el = ui.tab === 'today' && document.querySelector('.greet-quote .qt-tap');
@@ -1615,6 +1617,8 @@ window.addEventListener('visibilitychange', () => {
   flushSave(true);
 });
 window.addEventListener('pagehide', () => flushSave(true));
+/* 回到這個視窗就看一眼那個檔案 —— 從手機存回去之後，切回電腦就會被問 */
+window.addEventListener('focus', () => { checkHandoff(); });
 
 /* =================== UI 狀態與路由 =================== */
 const ui = {
@@ -3413,6 +3417,24 @@ function canShareFiles(){
     return navigator.canShare({files:[new File(['x'], 'x.json', {type:'application/json'})]});
   }catch(e){ return false; }
 }
+/* 那個共用檔案被另一台裝置改過的時候，不要等使用者想起來要匯入 —— 主動說一聲。
+   只提示，不自動接手：兩邊都是真的紀錄，該由人決定。 */
+let handoffShown = 0;
+async function checkHandoff(){
+  if (typeof fsBackup === 'undefined' || !fsBackup.supported()) return;
+  if (document.visibilityState !== 'visible') return;
+  if (Date.now() - handoffShown < 15000) return;
+  const found = await fsBackup.checkRemote();
+  if (!found) return;
+  handoffShown = Date.now();
+  fsBackup.pending = found;
+  const bar = $('#handoffBar'); if (!bar) return;
+  const mins = Math.max(1, Math.round((Date.now() - found.at) / 60000));
+  bar.hidden = false;
+  bar.innerHTML = `<span class="grow">另一台裝置在 ${mins} 分鐘前更新了備份檔。要接過來嗎？</span>
+    <button data-act="handoff-merge">合併</button>
+    <button data-act="handoff-skip">先不要</button>`;
+}
 function markBackedUp(){state.settings.lastBackupAt=new Date().toISOString();store.save(state);}
 /* 設定頁曾經是十七個區塊擠在一張表裡，捲到底找不到東西。
    改成分類選單 + 下鑽：第一層只回答「我要調什麼」，細節留在第二層。 */
@@ -3512,18 +3534,18 @@ function settingsSection(id){
     <div class="lbl">把反思印出來</div>
     <div class="hint" style="margin-bottom:7px">把所有反思排成一份文件送去列印。在列印預覽裡選「儲存成 PDF」（iPhone 是分享 → 儲存到檔案）就成了一本可以留著、可以送人的小書。</div>
     <button class="btn ghost full sm" data-act="print-reflections">整理成一份文件 ›</button>
-    <div class="lbl">桌面自動備份</div>
+    <div class="lbl">兩台裝置接手</div>
     ${!fsBackup.supported()
       ? '<div class="hint">這個瀏覽器沒有這個能力（目前只有桌面版 Chrome / Edge）。手機請用上面的「備份檔」。</div>'
       : fsBackup.linked()
         ? `<div class="hint" style="line-height:1.75">${fsBackup.needGrant
             ? `⚠️ 需要重新授權才能繼續寫入 <b>${esc(state.settings.fsBackup.name)}</b>。瀏覽器重新開啟後會這樣，點一下就好。`
-            : `✅ 每次變動都會自動寫進 <b>${esc(state.settings.fsBackup.name)}</b>。${state.settings.fsBackup.at ? `<br>上次寫入：${new Date(state.settings.fsBackup.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}` : ''}`}</div>
+            : `✅ 每次變動都會自動寫進 <b>${esc(state.settings.fsBackup.name)}</b>，而且會留意它有沒有被另一台裝置改過。${state.settings.fsBackup.at ? `<br>上次寫入：${new Date(state.settings.fsBackup.at).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}` : ''}`}</div>
           <div class="row" style="margin-top:8px">
             <button class="btn ghost grow" data-act="fs-write">${fsBackup.needGrant ? '重新授權' : '立即寫入'}</button>
             <button class="btn plain grow" data-act="fs-unlink">取消連結</button>
           </div>`
-        : `<div class="hint" style="margin-bottom:7px">選一個檔案位置（建議放在 iCloud、Dropbox 或 OneDrive 的資料夾），之後手帳會自動寫回那個檔案 —— 等於免費得到跨裝置與版本保護。</div>
+        : `<div class="hint" style="margin-bottom:7px;line-height:1.75">選一個放在 iCloud、Dropbox 或 OneDrive 資料夾裡的檔案，這台電腦之後每次變動都會自動寫回去。<br>手機那邊用上面的「📤 傳到電腦 → 儲存到檔案」存回同一個檔案，切回電腦時手帳會自己發現並問你要不要接過來。</div>
           <button class="btn ghost full sm" data-act="fs-pick">選擇備份檔案位置</button>`}
     <div class="lbl">還原（覆蓋目前資料）</div>
     <div class="row">
@@ -3593,6 +3615,8 @@ function settingsSection(id){
 const FS_MIN_GAP = 5 * 60 * 1000;
 const fsBackup = {
   _handle:null, lastAt:0, busy:false, needGrant:false,
+  /* 我們自己寫進去那一刻的檔案時間。比這個新，就是別台裝置寫的。 */
+  seenMtime:0, pending:null,
   supported(){ return typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function'; },
   linked(){ return !!(state.settings.fsBackup && state.settings.fsBackup.name); },
   async load(){
@@ -3634,6 +3658,7 @@ const fsBackup = {
       await w.write(exportJSON());
       await w.close();
       this.lastAt = Date.now();
+      try{ this.seenMtime = (await h.getFile()).lastModified; }catch(e){}
       const at = new Date().toISOString();
       state.settings.fsBackup = {name:h.name, at};
       state.settings.lastBackupAt = at;
@@ -3641,6 +3666,26 @@ const fsBackup = {
       return true;
     }catch(e){ this.needGrant = true; return false; }
     finally{ this.busy = false; }
+  },
+  /* 接手的另一半：那個檔案被別台裝置改過嗎？
+     這一條讓「電腦 → 檔案 → 手機」變成雙向 —— 手機把檔案存回同一個位置之後，
+     電腦這邊自己會發現，而不是等你想起來要匯入。 */
+  async checkRemote(){
+    if (!this.linked() || this.busy) return null;
+    const h = await this.load(); if (!h || !h.getFile) return null;
+    try{
+      if (!h.queryPermission || (await h.queryPermission({mode:'readwrite'})) !== 'granted') return null;
+      const f = await h.getFile();
+      if (!f || !f.lastModified) return null;
+      if (!this.seenMtime){ this.seenMtime = f.lastModified; return null; }   /* 第一次先記下來，不驚動 */
+      if (f.lastModified <= this.seenMtime) return null;
+      const raw = await f.text();
+      const mine = exportJSON();
+      /* 內容一樣就只是時間戳動了（雲端同步常見），不用問 */
+      const same = (() => { try{ return JSON.stringify(JSON.parse(raw).data) === JSON.stringify(JSON.parse(mine).data); }catch(e){ return false; } })();
+      if (same){ this.seenMtime = f.lastModified; return null; }
+      return {raw, at:f.lastModified};
+    }catch(e){ return null; }
   },
   async unlink(){
     this._handle = null; this.needGrant = false;
@@ -4616,6 +4661,19 @@ const actions = {
       catch(e2){ toast('傳送失敗'); }
     }
   },
+  'handoff-merge': () => {
+    const p = fsBackup.pending; if (!p) return;
+    $('#handoffBar').hidden = true;
+    importMode = 'merge';
+    fsBackup.seenMtime = p.at;      /* 不論最後選不選，這個版本都問過了 */
+    doImport(p.raw);
+  },
+  'handoff-skip': () => {
+    const p = fsBackup.pending;
+    if (p) fsBackup.seenMtime = p.at;
+    fsBackup.pending = null;
+    $('#handoffBar').hidden = true;
+  },
   'export-file': () => {
     try{
       downloadText(`人生手帳備份-${todayKey()}.json`, exportJSON(), 'application/json');
@@ -5187,7 +5245,7 @@ if ('serviceWorker' in navigator){
 /* 已經有資料的人直接請求長期保存；第一次使用的人只做靜默檢查，不打擾 */
 checkPersist(!!loadedState);
 /* 先確認檔案授權還在不在，設定頁才知道要不要提示重新授權 */
-if (state.settings.fsBackup) fsBackup.ensurePermission(false).catch(()=>{});
+if (state.settings.fsBackup) fsBackup.ensurePermission(false).then(() => setTimeout(checkHandoff, 1200)).catch(()=>{});
 /* 主畫面長按捷徑帶進來的參數：直接開到那一頁，用完就把網址還原乾淨 */
 let launchFocusAdd=false;
 try{
