@@ -789,7 +789,7 @@ const APP_ICON_MASKABLE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAgAAAAI
 /* =================== 常數 =================== */
 /* App 版本。注意這和 state.v 不同：state.v 是資料結構版本，只給 migrate 用，
    使用者不需要知道。沿革見 CHANGELOG.md。 */
-const APP_VERSION = '1.16';
+const APP_VERSION = '1.17';
 const WD = ['日','一','二','三','四','五','六'];
 /* 箴言。語氣要跟這本手帳一致：陪伴，不催促；提醒，不評分。
    刻意避開「再努力一點就會成功」那種句子 —— 那不是這本手帳想對你說的話。 */
@@ -3405,6 +3405,14 @@ function taskSheet(t){
 /* =================== 設定 / 備份 =================== */
 const PRE_IMPORT_KEY=KEY+'_before_import';
 function hasPreImport(){try{return !!localStorage.getItem(PRE_IMPORT_KEY);}catch(e){return false;}}
+/* 這台裝置能不能直接把檔案分享出去。用一個很小的假檔探測，
+   不是只看 navigator.share 存不存在 —— 桌面 Chrome 有 share 卻不收檔案。 */
+function canShareFiles(){
+  try{
+    if (!navigator.canShare) return false;
+    return navigator.canShare({files:[new File(['x'], 'x.json', {type:'application/json'})]});
+  }catch(e){ return false; }
+}
 function markBackedUp(){state.settings.lastBackupAt=new Date().toISOString();store.save(state);}
 /* 設定頁曾經是十七個區塊擠在一張表裡，捲到底找不到東西。
    改成分類選單 + 下鑽：第一層只回答「我要調什麼」，細節留在第二層。 */
@@ -3494,6 +3502,8 @@ function settingsSection(id){
     <div class="hint" style="margin-top:6px">若沒有成功，把手帳<b>加入主畫面</b>後再試一次，通過機率會高很多。</div>` : ''}
     <div class="lbl">下載備份</div>
     <div class="hint" style="margin-bottom:7px">${state.settings.lastBackupAt ? `上次備份：${new Date(state.settings.lastBackupAt).toLocaleString('zh-TW',{month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}` : '尚未記錄備份時間'}</div>
+    ${canShareFiles() ? `<button class="btn ghost full sm" data-act="export-share">📤 傳到電腦（AirDrop、雲端…）</button>
+    <div class="hint" style="margin:6px 0 9px">會叫出手機原生的分享面板。AirDrop 給自己的電腦最快，也可以丟到雲端硬碟或傳給自己。檔案不經過任何伺服器。</div>` : ''}
     <div class="row">
       <button class="btn ghost grow" data-act="export-file">備份檔</button>
       <button class="btn ghost grow" data-act="export-copy">複製文字</button>
@@ -4582,6 +4592,30 @@ const actions = {
   },
 
   /* 備份 */
+  /* 一鍵送到電腦。iOS 的 navigator.share 帶檔案會叫出原生分享面板，
+     AirDrop 就在那一排裡；Android 會出現藍牙、雲端硬碟、傳給自己等等。
+     這條路完全不經過伺服器，檔案直接從手機到電腦。
+     失敗就退回下載，絕不讓使用者以為備份好了卻什麼都沒發生。 */
+  'export-share': async () => {
+    let file;
+    try{
+      file = new File([exportJSON()], `人生手帳備份-${todayKey()}.json`, {type:'application/json'});
+    }catch(e){ toast('這個瀏覽器不支援，改用「備份檔」'); return; }
+    if (!(navigator.canShare && navigator.canShare({files:[file]}))){
+      try{ downloadText(file.name, exportJSON(), 'application/json'); markBackedUp(); toast('這台裝置不能直接傳送，已改成下載'); }
+      catch(e){ toast('這個環境無法傳送，改用「複製文字」'); }
+      return;
+    }
+    try{
+      await navigator.share({files:[file], title:'人生手帳備份'});
+      markBackedUp(); settingsSection('backup'); toast('已送出 ✓');
+    }catch(e){
+      /* 使用者自己按取消不算失敗，不用嚇他 */
+      if (e && (e.name === 'AbortError' || e.name === 'NotAllowedError')) return;
+      try{ downloadText(file.name, exportJSON(), 'application/json'); markBackedUp(); toast('傳送沒成功，已改成下載'); }
+      catch(e2){ toast('傳送失敗'); }
+    }
+  },
   'export-file': () => {
     try{
       downloadText(`人生手帳備份-${todayKey()}.json`, exportJSON(), 'application/json');
