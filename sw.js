@@ -22,8 +22,10 @@ self.addEventListener('install', e => {
 
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
+    /* 只清自己的舊版本。caches.keys() 是整個網域共用的，
+       寫成「不是我就刪」會把同網域其他 app（好棒印章）的離線快取一起清掉。 */
     const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
+    await Promise.all(keys.filter(k => k.startsWith('life-journal-') && k !== CACHE).map(k => caches.delete(k)));
     await self.clients.claim();
   })());
 });
