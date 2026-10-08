@@ -10,7 +10,7 @@
 
 用法：
     python3 tools/check-punctuation.py index.html          # 檢查
-    python3 tools/check-punctuation.py --fix index.html    # 直接修
+    python3 tools/check-punctuation.py --fix README.md     # 直接修（建議只用在 .md；.js 不要用）
 """
 import re
 import sys
@@ -97,7 +97,7 @@ def main():
             print(f'✅ {path}：全形標點檢查通過')
 
     if failed:
-        print('\n修正方式：python3 tools/check-punctuation.py --fix index.html')
+        print('\n修正方式：python3 tools/check-punctuation.py --fix <檔案.md>（.js 不要用 --fix，請手改）')
     return 1 if failed else 0
 
 
